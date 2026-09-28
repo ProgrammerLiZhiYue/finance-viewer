@@ -1,0 +1,9 @@
+nodeLinker: hoisted
+blockExoticSubdeps: false
+# 网络受限环境无法 git 拉取 @electron/node-gyp，用本地 tarball 代替（见 vendor/）
+overrides:
+  '@electron/node-gyp': 'file:./vendor/electron-node-gyp.tar.gz'
+allowBuilds:
+  electron: true
+  electron-winstaller: true
+  unrs-resolver: true

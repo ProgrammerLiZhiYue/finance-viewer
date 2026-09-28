@@ -1,0 +1,231 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            arch: x64
+            command: make:win
+          - os: macos-15-intel
+            platform: macos
+            arch: x64
+            command: make:mac
+          - os: macos-15
+            platform: macos
+            arch: arm64
+            command: make:mac
+          - os: ubuntu-24.04
+            platform: linux
+            arch: x64
+            command: make:linux
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Validate release tag
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          node <<'NODE'
+          const { version } = require('./package.json');
+          if (process.env.REF_TYPE === 'tag' && process.env.TAG_NAME !== `v${version}`) {
+            throw new Error(`Release tag must match package.json version: v${version}`);
+          }
+          NODE
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install Linux packaging tools
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y fakeroot rpm
+
+      - name: Install dependencies
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Electron after the extraction patch
+        run: |
+          node node_modules/electron/install.js
+          node -e "require('node:fs').accessSync(require('electron'))"
+
+      - name: Check code
+        run: |
+          pnpm run lint
+          pnpm exec tsc --noEmit
+          pnpm test
+
+      - name: Generate macOS icon
+        if: runner.os == 'macOS'
+        run: |
+          iconset="$RUNNER_TEMP/finance-viewer.iconset"
+          mkdir -p "$iconset"
+          for size in 16 32 128 256 512; do
+            sips -z "$size" "$size" assets/icons/icon.png --out "$iconset/icon_${size}x${size}.png"
+            double=$((size * 2))
+            sips -z "$double" "$double" assets/icons/icon.png --out "$iconset/icon_${size}x${size}@2x.png"
+          done
+          iconutil -c icns "$iconset" -o assets/icons/icon.icns
+
+      - name: Build installers
+        env:
+          BUILD_COMMAND: ${{ matrix.command }}
+          BUILD_ARCH: ${{ matrix.arch }}
+        run: pnpm run "$BUILD_COMMAND" --arch "$BUILD_ARCH"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: finance-viewer-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            out/make/**/*.exe
+            out/make/**/*.msi
+            out/make/**/*.nupkg
+            out/make/**/RELEASES
+            out/make/**/*.zip
+            out/make/**/*.deb
+            out/make/**/*.rpm
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+          overwrite: true
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Download all installers
+        uses: actions/download-artifact@v4
+        with:
+          pattern: finance-viewer-*
+          path: release-artifacts
+
+      - name: Publish installers to the tag release
+        uses: actions/github-script@v7
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        with:
+          script: |
+            const fs = require('node:fs');
+            const path = require('node:path');
+            const { execFileSync } = require('node:child_process');
+            const repo = context.repo;
+            const tag = process.env.TAG_NAME;
+            const { version } = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            if (tag !== `v${version}`) throw new Error('Tag does not match package.json version');
+
+            const { data: ref } = await github.rest.git.getRef({ ...repo, ref: `tags/${tag}` });
+            let object = ref.object;
+            while (object.type === 'tag') {
+              const { data } = await github.rest.git.getTag({ ...repo, tag_sha: object.sha });
+              object = data.object;
+            }
+            if (object.type !== 'commit' || object.sha !== context.sha) {
+              throw new Error('Tag no longer points to the commit used for this build');
+            }
+
+            function collect(directory) {
+              return fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+                const file = path.join(directory, entry.name);
+                return entry.isDirectory() ? collect(file) : [file];
+              });
+            }
+            const files = collect('release-artifacts');
+            const names = files.map(file => path.basename(file));
+            if (new Set(names).size !== names.length) throw new Error('Duplicate release asset names');
+            const required = [
+              ['windows-x64', /\.exe$/],
+              ['windows-x64', /\.nupkg$/],
+              ['windows-x64', /^RELEASES$/],
+              ['macos-x64', /\.zip$/],
+              ['macos-arm64', /\.zip$/],
+              ['linux-x64', /\.deb$/],
+              ['linux-x64', /\.rpm$/],
+            ];
+            for (const [platform, extension] of required) {
+              const directory = path.join('release-artifacts', `finance-viewer-${platform}`) + path.sep;
+              if (!files.some(file => file.startsWith(directory) && extension.test(path.basename(file)))) {
+                throw new Error(`Missing installer for ${platform}: ${extension}`);
+              }
+            }
+
+            const prerelease = version.includes('-');
+            let release;
+            try {
+              ({ data: release } = await github.rest.repos.getReleaseByTag({ ...repo, tag }));
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              // The tag endpoint excludes drafts left behind by an interrupted upload.
+              for await (const page of github.paginate.iterator(github.rest.repos.listReleases, { ...repo, per_page: 100 })) {
+                release = page.data.find(item => item.draft && item.tag_name === tag);
+                if (release) break;
+              }
+              if (!release) {
+                ({ data: release } = await github.rest.repos.createRelease({
+                  ...repo,
+                  tag_name: tag,
+                  target_commitish: context.sha,
+                  name: tag,
+                  draft: true,
+                  prerelease,
+                  generate_release_notes: true,
+                }));
+              }
+            }
+            if (release.immutable) throw new Error('Release is immutable; publish a new version instead');
+            execFileSync('gh', ['release', 'upload', tag, ...files, '--clobber'], { stdio: 'inherit' });
+            await github.rest.repos.updateRelease({
+              ...repo,
+              release_id: release.id,
+              draft: false,
+              prerelease,
+            });
+            core.info(`Published ${files.length} assets to ${tag}`);

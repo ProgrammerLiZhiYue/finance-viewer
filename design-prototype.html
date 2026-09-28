@@ -1,0 +1,4280 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light" data-platform="macos">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="canvas:aspect-ratio" content="16:10">
+<meta name="distribution" content="v* 标签发布至 GitHub Release；Windows x64 EXE、macOS x64/arm64 ZIP、Linux x64 DEB/RPM；上传失败保留草稿，重跑续传；应用界面与交互不变">
+<title>外汇查看器</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+/* ============================================
+   Design Tokens — Apple-inspired
+   ============================================ */
+:root {
+  /* Raw color palette */
+  --raw-white: #ffffff;
+  --raw-black: #000000;
+  --raw-gray-bg: #f5f5f7;
+  --raw-gray-sec: #f0f0f2;
+  --raw-gray-text: #86868b;
+  --raw-gray-muted: #aeaeb2;
+  --raw-gray-dk-bg: #1c1c1e;
+  --raw-gray-dk-text: #f5f5f7;
+  --raw-gray-dk-surface: #2c2c2e;
+  --raw-gray-dk-mid: #3a3a3c;
+  --raw-gray-dk-seg: #48484a;
+  --raw-gray-dk-muted: #98989d;
+  --raw-gray-dk-dim: #636366;
+  --raw-blue: #0071e3;
+  --raw-blue-hover: #0077ed;
+  --raw-blue-dk: #2997ff;
+  --raw-blue-dk-hover: #40a9ff;
+  --raw-indigo: #5856d6;
+  --raw-indigo-dk: #5e5ce6;
+  --raw-red-up: #ef5350;
+  --raw-red-up-dk: #ff6961;
+  --raw-red-danger: #ff3b30;
+  --raw-red-danger-dk: #ff453a;
+  --raw-red-danger-hover: #d32f2f;
+  --raw-green-down: #26a69a;
+  --raw-green-down-dk: #4ecdc4;
+  --raw-green-online: #34c759;
+  --raw-tl-close: #ff5f57;
+  --raw-tl-min: #febc2e;
+  --raw-tl-max: #28c840;
+
+  /* Seed tokens */
+  --seed-bg: var(--raw-gray-bg);
+  --seed-fg: #1d1d1f;
+  --seed-primary: var(--raw-blue);
+  --seed-accent: var(--raw-indigo);
+  --seed-surface: var(--raw-white);
+  --seed-radius: 14px;
+
+  /* Surfaces */
+  --bg-app: var(--seed-bg);
+  --bg-surface: var(--seed-surface);
+  --bg-surface-secondary: var(--raw-gray-sec);
+  --bg-sidebar: rgba(245, 245, 247, 0.72);
+  --bg-nav: rgba(255, 255, 255, 0.72);
+  --bg-elevated: var(--raw-white);
+  --bg-input: rgba(118, 118, 128, 0.08);
+  --bg-segmented: rgba(118, 118, 128, 0.08);
+  --bg-segmented-active: var(--raw-white);
+
+  /* Text */
+  --text-primary: var(--seed-fg);
+  --text-secondary: var(--raw-gray-text);
+  --text-tertiary: var(--raw-gray-muted);
+  --text-on-primary: var(--raw-white);
+
+  /* Borders */
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-medium: rgba(0, 0, 0, 0.1);
+  --border-strong: rgba(0, 0, 0, 0.15);
+
+  /* Accent */
+  --accent: var(--seed-primary);
+  --accent-hover: var(--raw-blue-hover);
+  --accent-subtle: rgba(0, 113, 227, 0.08);
+
+  /* Component tokens */
+  --color-tl-close: var(--raw-tl-close);
+  --color-tl-minimize: var(--raw-tl-min);
+  --color-tl-maximize: var(--raw-tl-max);
+  --color-online: var(--raw-green-online);
+  --color-danger: var(--raw-red-danger);
+  --color-danger-hover: var(--raw-red-danger-hover);
+  --color-slider-thumb: var(--raw-white);
+  --color-frame-shadow: rgba(0, 0, 0, 0.3);
+  --color-body-bg: var(--raw-black);
+
+  /* Semantic — Chinese convention: red=up, green=down */
+  --rate-up: var(--raw-red-up);
+  --rate-up-bg: rgba(239, 83, 80, 0.08);
+  --rate-down: var(--raw-green-down);
+  --rate-down-bg: rgba(38, 166, 154, 0.08);
+  --rate-flat: var(--raw-gray-text);
+
+  /* Shadows */
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04);
+  --shadow-card-hover: 0 2px 8px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.06);
+  --shadow-elevated: 0 4px 16px rgba(0,0,0,0.08), 0 12px 40px rgba(0,0,0,0.06);
+  --shadow-segmented: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+
+  /* Chart */
+  --chart-grid: rgba(0, 0, 0, 0.06);
+  --chart-axis-label: var(--raw-gray-text);
+  --chart-tooltip-bg: rgba(255, 255, 255, 0.92);
+  --chart-tooltip-border: rgba(0, 0, 0, 0.08);
+  --chart-tooltip-text: var(--seed-fg);
+  --chart-line: var(--accent);
+  --chart-area-start: rgba(0, 113, 227, 0.15);
+  --chart-area-end: rgba(0, 113, 227, 0.01);
+  --chart-candle-up: var(--raw-red-up);
+  --chart-candle-down: var(--raw-green-down);
+
+  /* Misc */
+  --radius-sm: 8px;
+  --radius-md: var(--seed-radius);
+  --radius-lg: 20px;
+  --radius-full: 9999px;
+  --transition: 300ms cubic-bezier(0.25, 0.1, 0.25, 1);
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', 'Segoe UI', sans-serif;
+}
+
+/* Dark theme */
+html[data-theme="dark"] {
+  --seed-bg: var(--raw-gray-dk-bg);
+  --seed-fg: var(--raw-gray-dk-text);
+  --seed-primary: var(--raw-blue-dk);
+  --seed-accent: var(--raw-indigo-dk);
+  --seed-surface: var(--raw-gray-dk-surface);
+
+  --bg-app: var(--seed-bg);
+  --bg-surface: var(--seed-surface);
+  --bg-surface-secondary: var(--raw-gray-dk-mid);
+  --bg-sidebar: rgba(28, 28, 30, 0.72);
+  --bg-nav: rgba(44, 44, 46, 0.72);
+  --bg-elevated: var(--raw-gray-dk-mid);
+  --bg-input: rgba(118, 118, 128, 0.16);
+  --bg-segmented: rgba(118, 118, 128, 0.16);
+  --bg-segmented-active: var(--raw-gray-dk-seg);
+
+  --text-primary: var(--seed-fg);
+  --text-secondary: var(--raw-gray-dk-muted);
+  --text-tertiary: var(--raw-gray-dk-dim);
+  --text-on-primary: var(--raw-black);
+
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-medium: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.15);
+
+  --accent: var(--seed-primary);
+  --accent-hover: var(--raw-blue-dk-hover);
+  --accent-subtle: rgba(41, 151, 255, 0.12);
+
+  --rate-up: var(--raw-red-up-dk);
+  --rate-up-bg: rgba(255, 105, 97, 0.12);
+  --rate-down: var(--raw-green-down-dk);
+  --rate-down-bg: rgba(78, 205, 196, 0.12);
+
+  --color-tl-close: var(--raw-tl-close);
+  --color-tl-minimize: var(--raw-tl-min);
+  --color-tl-maximize: var(--raw-tl-max);
+  --color-online: var(--raw-green-online);
+  --color-danger: var(--raw-red-danger-dk);
+  --color-danger-hover: var(--raw-red-danger-hover);
+  --color-slider-thumb: var(--raw-gray-dk-dim);
+  --color-frame-shadow: rgba(0, 0, 0, 0.5);
+
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.15);
+  --shadow-card-hover: 0 2px 8px rgba(0,0,0,0.25), 0 8px 24px rgba(0,0,0,0.2);
+  --shadow-elevated: 0 4px 16px rgba(0,0,0,0.3), 0 12px 40px rgba(0,0,0,0.2);
+  --shadow-segmented: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+
+  --chart-grid: rgba(255, 255, 255, 0.06);
+  --chart-axis-label: var(--raw-gray-dk-muted);
+  --chart-tooltip-bg: rgba(58, 58, 60, 0.92);
+  --chart-tooltip-border: rgba(255, 255, 255, 0.1);
+  --chart-tooltip-text: var(--raw-gray-dk-text);
+  --chart-line: var(--accent);
+  --chart-area-start: rgba(41, 151, 255, 0.18);
+  --chart-area-end: rgba(41, 151, 255, 0.01);
+}
+
+/* ============================================
+   Reset & Base
+   ============================================ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font);
+  background: var(--color-body-bg);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================
+   macOS Window Frame
+   ============================================ */
+.window-frame {
+  width: 1120px;
+  height: 720px;
+  background: var(--bg-app);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px var(--color-frame-shadow), 0 0 0 0.5px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: background var(--transition);
+}
+
+/* Title bar */
+.title-bar {
+  height: 52px;
+  background: var(--bg-nav);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  -webkit-app-region: drag;
+  user-select: none;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 100;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.traffic-lights {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.traffic-light {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  cursor: pointer;
+  position: relative;
+}
+.traffic-light::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 0.5px solid rgba(0,0,0,0.12);
+}
+.tl-close { background: var(--color-tl-close); }
+.tl-minimize { background: var(--color-tl-minimize); }
+.tl-maximize { background: var(--color-tl-maximize); }
+
+.title-text {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: -0.01em;
+}
+
+.title-bar-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+}
+
+/* Theme toggle */
+.theme-toggle {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: var(--bg-input);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: all var(--transition);
+  font-size: 16px;
+}
+.theme-toggle:hover { background: var(--border-medium); }
+.theme-toggle:active { transform: scale(0.92); }
+
+/* Refresh indicator */
+.refresh-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+.refresh-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-online);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ============================================
+   Navigation
+   ============================================ */
+.nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px 8px;
+  flex-shrink: 0;
+}
+
+.nav-pills {
+  display: flex;
+  background: var(--bg-segmented);
+  border-radius: var(--radius-full);
+  padding: 2px;
+  gap: 0;
+  position: relative;
+}
+
+.nav-pill {
+  padding: 6px 20px;
+  border: none;
+  background: transparent;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-full);
+  transition: all var(--transition);
+  position: relative;
+  z-index: 1;
+  letter-spacing: -0.01em;
+}
+.nav-pill:hover { color: var(--text-primary); }
+.nav-pill.active {
+  color: var(--text-primary);
+  background: var(--bg-segmented-active);
+  box-shadow: var(--shadow-segmented);
+  font-weight: 600;
+}
+
+/* ============================================
+   Content area
+   ============================================ */
+.content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.view {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 250ms ease, visibility 250ms ease;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-medium) transparent;
+}
+.view.active {
+  opacity: 1;
+  visibility: visible;
+}
+.view::-webkit-scrollbar { width: 6px; }
+.view::-webkit-scrollbar-thumb { background: var(--border-medium); border-radius: 3px; }
+.view::-webkit-scrollbar-track { background: transparent; }
+
+/* ============================================
+   Overview Page
+   ============================================ */
+.overview-content {
+  padding: 8px 24px 24px;
+}
+
+/* Market indices row */
+.market-indices {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.index-card {
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  border: 1px solid var(--border-subtle);
+  transition: all var(--transition);
+  cursor: default;
+}
+.index-card:hover {
+  box-shadow: var(--shadow-card-hover);
+  border-color: var(--border-medium);
+}
+.index-card-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-bottom: 4px;
+  letter-spacing: 0.01em;
+}
+.index-card-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.index-card-change {
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Section header */
+.section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.section-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+.section-subtitle {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+/* Currency pair grid */
+.pair-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.pair-card {
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: all var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+  overflow: hidden;
+}
+.pair-card:hover {
+  box-shadow: var(--shadow-card-hover);
+  border-color: var(--border-medium);
+  transform: translateY(-1px);
+}
+.pair-card:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-card);
+}
+
+.pair-flag {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  background: var(--bg-surface-secondary);
+}
+
+.pair-info {
+  flex: 1;
+  min-width: 0;
+}
+.pair-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  margin-bottom: 2px;
+}
+.pair-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+.pair-rate-section {
+  text-align: right;
+  flex-shrink: 0;
+  min-width: 100px;
+}
+.pair-rate {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.pair-change {
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
+.pair-spark {
+  flex-shrink: 0;
+  width: 64px;
+  height: 32px;
+}
+.pair-spark svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Rate color classes */
+.rate-up { color: var(--rate-up); }
+.rate-down { color: var(--rate-down); }
+.rate-flat { color: var(--rate-flat); }
+.rate-bg-up { background: var(--rate-up-bg); }
+.rate-bg-down { background: var(--rate-down-bg); }
+
+/* ============================================
+   Detail Page
+   ============================================ */
+.detail-layout {
+  display: flex;
+  height: 100%;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--bg-sidebar);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.sidebar-search {
+  padding: 12px 14px 8px;
+}
+.sidebar-search-input {
+  width: 100%;
+  padding: 8px 12px 8px 32px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+  transition: all var(--transition);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2386868b' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 10px center;
+}
+.sidebar-search-input::placeholder { color: var(--text-tertiary); }
+.sidebar-search-input:focus {
+  background-color: var(--bg-surface);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+/* Sidebar toolbar */
+.sidebar-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 14px 6px;
+}
+.sidebar-toolbar-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+.sidebar-edit-btn {
+  padding: 3px 10px;
+  border: none;
+  background: transparent;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all 180ms ease;
+}
+.sidebar-edit-btn:hover {
+  background: var(--accent-subtle);
+}
+.sidebar-edit-btn.done {
+  color: var(--text-secondary);
+}
+
+/* Sidebar list — edit mode background hint */
+.sidebar.editing .sidebar-list {
+  background: var(--bg-surface-secondary);
+  border-radius: var(--radius-sm);
+  margin: 0 4px;
+}
+
+.sidebar-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-medium) transparent;
+}
+.sidebar-list::-webkit-scrollbar { width: 4px; }
+.sidebar-list::-webkit-scrollbar-thumb { background: var(--border-medium); border-radius: 2px; }
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 180ms ease;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+.sidebar-item:hover { background: var(--bg-input); }
+.sidebar-item.active {
+  background: var(--accent-subtle);
+}
+.sidebar-item.active .sidebar-item-name { color: var(--accent); font-weight: 600; }
+.sidebar-item.active .sidebar-item-flag { background: var(--accent-subtle); }
+
+.sidebar-item-flag {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  background: var(--bg-surface-secondary);
+  flex-shrink: 0;
+  transition: background 180ms ease;
+}
+.sidebar-item-info { flex: 1; min-width: 0; }
+.sidebar-item-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  transition: color 180ms ease;
+}
+.sidebar-item-rate {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  margin-top: 1px;
+}
+.sidebar-item-change {
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.sidebar-footer {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+  transition: border-color var(--transition);
+}
+
+/* Sidebar — remove button (hover-reveal) */
+.sidebar-item-remove {
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: var(--bg-input);
+  border-radius: 50%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: all 150ms ease;
+}
+.sidebar.editing .sidebar-item .sidebar-item-remove { display: flex; }
+.sidebar-item-remove:hover {
+  background: var(--color-danger);
+  color: var(--raw-white);
+}
+
+/* Sidebar — drag handle */
+.sidebar-item-drag {
+  width: 16px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  letter-spacing: 1px;
+  flex-shrink: 0;
+  opacity: 0.5;
+  transition: opacity 150ms ease;
+  user-select: none;
+  line-height: 1;
+}
+.sidebar.editing .sidebar-item .sidebar-item-drag { display: flex; }
+.sidebar-item-drag:hover { opacity: 1; }
+.sidebar-item-drag:active { cursor: grabbing; }
+
+/* Drag states */
+.sidebar-item.dragging {
+  opacity: 0.4;
+  background: transparent;
+}
+.sidebar-item.drag-over-top {
+  box-shadow: 0 -2px 0 0 var(--accent);
+}
+.sidebar-item.drag-over-bottom {
+  box-shadow: 0 2px 0 0 var(--accent);
+}
+
+/* Sidebar — add currency button */
+.sidebar-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  margin: 4px 8px 8px;
+  border: 1.5px dashed var(--border-medium);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  transition: all 180ms ease;
+}
+.sidebar-add-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+/* Add currency panel */
+.add-panel-overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.2);
+  z-index: 300;
+  align-items: center;
+  justify-content: center;
+}
+.add-panel-overlay.open { display: flex; }
+.add-panel {
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-elevated);
+  width: 280px;
+  max-height: 380px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.add-panel-header {
+  padding: 14px 16px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.add-panel-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.add-panel-close {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: var(--bg-input);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+  transition: all 150ms ease;
+}
+.add-panel-close:hover {
+  background: var(--border-medium);
+  color: var(--text-primary);
+}
+.add-panel-search {
+  padding: 10px 14px;
+}
+.add-panel-search input {
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 6px;
+  background: var(--bg-input);
+  font-family: var(--font);
+  font-size: 12px;
+  color: var(--text-primary);
+  outline: none;
+}
+.add-panel-search input::placeholder { color: var(--text-tertiary); }
+.add-panel-search input:focus {
+  box-shadow: 0 0 0 2px var(--accent-subtle);
+}
+.add-panel-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 8px 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-medium) transparent;
+}
+.add-panel-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+.add-panel-item:hover { background: var(--bg-input); }
+.add-panel-item-flag {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  background: var(--bg-surface-secondary);
+  flex-shrink: 0;
+}
+.add-panel-item-info { flex: 1; }
+.add-panel-item-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.add-panel-item-code {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.add-panel-item-add {
+  font-size: 18px;
+  color: var(--accent);
+  font-weight: 300;
+  flex-shrink: 0;
+}
+
+/* Detail main area */
+.detail-main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 24px 24px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-medium) transparent;
+}
+.detail-main::-webkit-scrollbar { width: 6px; }
+.detail-main::-webkit-scrollbar-thumb { background: var(--border-medium); border-radius: 3px; }
+
+/* Rate header */
+.rate-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.rate-pair-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  letter-spacing: 0.01em;
+}
+.rate-value {
+  font-size: 40px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  transition: color var(--transition);
+}
+.rate-value.flash {
+  animation: rateFlash 600ms ease;
+}
+@keyframes rateFlash {
+  0% { opacity: 1; }
+  25% { opacity: 0.5; transform: scale(1.02); }
+  50% { opacity: 1; transform: scale(1); }
+  75% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+.rate-change-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+.rate-change-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.rate-change-badge.up { background: var(--rate-up-bg); color: var(--rate-up); }
+.rate-change-badge.down { background: var(--rate-down-bg); color: var(--rate-down); }
+.rate-change-badge.flat { background: var(--bg-input); color: var(--rate-flat); }
+
+.rate-update-time {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-align: right;
+}
+
+/* Period selector */
+.period-selector {
+  display: flex;
+  background: var(--bg-segmented);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  margin-bottom: 16px;
+  width: fit-content;
+}
+.period-btn {
+  padding: 5px 14px;
+  border: none;
+  background: transparent;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 180ms ease;
+  letter-spacing: -0.01em;
+}
+.period-btn:hover { color: var(--text-primary); }
+.period-btn.active {
+  color: var(--text-primary);
+  background: var(--bg-segmented-active);
+  box-shadow: var(--shadow-segmented);
+  font-weight: 600;
+}
+
+/* Period "more" dropdown */
+.period-more-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.period-more-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.period-more-btn .chevron {
+  font-size: 8px;
+  opacity: 0.5;
+  transition: transform 180ms ease;
+}
+.period-more-wrap.open .period-more-btn .chevron {
+  transform: rotate(180deg);
+}
+.period-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-elevated);
+  padding: 4px;
+  z-index: 200;
+  min-width: 90px;
+  flex-direction: column;
+  gap: 2px;
+}
+.period-more-wrap.open .period-dropdown {
+  display: flex;
+}
+.period-dropdown-item {
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 150ms ease;
+  text-align: center;
+  white-space: nowrap;
+}
+.period-dropdown-item:hover {
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+.period-dropdown-item.active {
+  color: var(--accent);
+  font-weight: 600;
+  background: var(--accent-subtle);
+}
+
+/* Chart container */
+.chart-container {
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  margin-bottom: 16px;
+  transition: all var(--transition);
+}
+.chart-area {
+  width: 100%;
+  height: 320px;
+}
+
+/* Rate color utilities */
+.rate-up { color: var(--rate-up); }
+.rate-down { color: var(--rate-down); }
+
+/* Key metrics strip */
+.key-metrics {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0;
+  background: transparent;
+  overflow: hidden;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 12px;
+}
+.key-metric-item {
+  padding: 6px 8px;
+  text-align: center;
+  position: relative;
+}
+.key-metric-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 20px;
+  background: var(--border-subtle);
+}
+.key-metric-label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+  margin-bottom: 4px;
+  white-space: nowrap;
+}
+.key-metric-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+/* Period statistics */
+.period-stats {
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  padding: 14px 16px;
+  transition: all var(--transition);
+}
+.period-stats-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  letter-spacing: -0.01em;
+}
+
+/* ============================================
+   Settings Page
+   ============================================ */
+.settings-content {
+  padding: 8px 24px 24px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.settings-group {
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  padding: 20px;
+  margin-bottom: 16px;
+  transition: all var(--transition);
+}
+.settings-group-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+}
+.settings-group-desc {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-bottom: 16px;
+}
+
+/* Theme selector */
+.theme-options {
+  display: flex;
+  gap: 8px;
+}
+.theme-option {
+  flex: 1;
+  padding: 12px;
+  border: 2px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  text-align: center;
+  transition: all 180ms ease;
+  font-family: var(--font);
+}
+.theme-option:hover { border-color: var(--border-medium); }
+.theme-option.active {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+.theme-option-icon {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+.theme-option-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Slider */
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.slider-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  min-width: 56px;
+  text-align: center;
+}
+.slider-unit {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+.slider-track {
+  flex: 1;
+  position: relative;
+}
+.slider-track input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--bg-segmented);
+  border-radius: 2px;
+  outline: none;
+}
+.slider-track input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  background: var(--color-slider-thumb);
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15), 0 0 0 0.5px rgba(0,0,0,0.05);
+  cursor: pointer;
+  transition: box-shadow 180ms ease;
+}
+.slider-track input[type="range"]::-webkit-slider-thumb:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2), 0 0 0 0.5px rgba(0,0,0,0.08);
+}
+.slider-presets {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.slider-preset {
+  padding: 5px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  background: transparent;
+  font-family: var(--font);
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 180ms ease;
+}
+.slider-preset:hover { border-color: var(--accent); color: var(--accent); }
+.slider-preset.active {
+  background: var(--accent);
+  color: var(--text-on-primary);
+  border-color: var(--accent);
+}
+
+/* Pair chips */
+.pair-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pair-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1.5px solid var(--border-medium);
+  border-radius: var(--radius-full);
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--text-secondary);
+  transition: all 180ms ease;
+  user-select: none;
+}
+.pair-chip:hover { border-color: var(--accent); }
+.pair-chip.checked {
+  background: var(--accent-subtle);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 500;
+}
+.pair-chip-check {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid var(--border-medium);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 180ms ease;
+  font-size: 10px;
+}
+.pair-chip.checked .pair-chip-check {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-on-primary);
+}
+
+.notification-status {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.pair-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.subscription-demo {
+  padding: 10px 12px;
+  margin: 14px 0;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-secondary);
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.7;
+}
+.subscription-cards { display: grid; gap: 14px; margin-top: 16px; }
+.subscription-card {
+  min-width: 0;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.subscription-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  background: var(--bg-surface-secondary);
+}
+.subscription-card-title { margin: 0 0 4px; font-size: 14px; color: var(--text-primary); }
+.subscription-unit, .subscription-count { font-size: 11px; color: var(--text-secondary); line-height: 1.6; }
+.subscription-count { text-align: right; flex-shrink: 0; }
+.subscription-rule {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border-top: 1px solid var(--border-subtle);
+}
+.subscription-rule-info { flex: 1; min-width: 0; }
+.subscription-rule-title { font-size: 13px; font-weight: 600; line-height: 1.6; color: var(--text-primary); }
+.subscription-rule-summary { margin-top: 4px; font-size: 11px; line-height: 1.7; color: var(--text-secondary); overflow-wrap: anywhere; }
+.subscription-rule-state { margin-top: 6px; font-size: 11px; color: var(--accent); }
+.subscription-rule-state.paused { color: var(--text-tertiary); }
+.subscription-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.subscription-button {
+  padding: 6px 9px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-family: var(--font);
+  font-size: 11px;
+  cursor: pointer;
+}
+.subscription-button:hover { border-color: var(--accent); color: var(--accent); }
+.subscription-button.danger { color: var(--color-danger); }
+.subscription-button:focus-visible, .subscription-notes summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.subscription-add { width: calc(100% - 28px); margin: 0 14px 14px; padding: 9px; border-style: dashed; color: var(--accent); }
+.subscription-empty { padding: 18px 14px; font-size: 12px; line-height: 1.8; color: var(--text-secondary); }
+.subscription-cards > .subscription-empty { border: 1px dashed var(--border-medium); border-radius: var(--radius-sm); text-align: center; }
+.subscription-notes { margin-top: 16px; font-size: 11px; line-height: 1.9; color: var(--text-secondary); }
+.subscription-notes summary { cursor: pointer; color: var(--accent); }
+.subscription-notes ul { margin: 8px 0 0; padding-left: 18px; }
+.subscription-dialog {
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  margin: auto;
+  padding: 24px;
+  overflow-y: auto;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.24);
+  font-family: var(--font);
+}
+.subscription-dialog::backdrop { background: rgba(0, 0, 0, 0.35); backdrop-filter: blur(3px); }
+.subscription-dialog h2 { margin: 0 0 6px; font-size: 18px; }
+.subscription-dialog-intro { margin: 0 0 20px; font-size: 12px; line-height: 1.7; color: var(--text-secondary); }
+.subscription-field { margin-bottom: 16px; }
+.subscription-field label { display: block; margin-bottom: 7px; font-size: 12px; font-weight: 600; }
+.subscription-field input, .subscription-field select {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font: 13px var(--font);
+}
+.subscription-field input:focus, .subscription-field select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.subscription-field input[aria-invalid="true"] { border-color: var(--color-danger); }
+.subscription-field small { display: block; margin-top: 6px; font-size: 11px; line-height: 1.7; color: var(--text-secondary); }
+.subscription-error { min-height: 18px; margin-top: 6px; color: var(--color-danger); font-size: 11px; }
+.subscription-preview { padding: 12px; border-radius: var(--radius-sm); background: var(--accent-subtle); font-size: 12px; line-height: 1.8; }
+.subscription-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.subscription-dialog-actions .subscription-button { padding: 9px 16px; font-size: 12px; }
+.subscription-button.primary { background: var(--accent); border-color: var(--accent); color: var(--text-on-primary); }
+.subscription-button:disabled { opacity: 0.45; cursor: not-allowed; }
+html[data-theme="dark"] .subscription-dialog { color-scheme: dark; }
+@media (max-width: 600px) {
+  .subscription-rule { flex-direction: column; gap: 8px; }
+  .subscription-actions { align-self: flex-end; }
+  .subscription-card-header { flex-wrap: wrap; }
+  .subscription-count { text-align: left; }
+  .subscription-dialog { padding: 18px; }
+}
+
+/* Language selector */
+.lang-options {
+  display: flex;
+  gap: 8px;
+}
+.lang-option {
+  flex: 1;
+  padding: 10px;
+  border: 2px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  text-align: center;
+  transition: all 180ms ease;
+  font-family: var(--font);
+}
+.lang-option:hover { border-color: var(--border-medium); }
+.lang-option.active {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+.lang-option-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.lang-option-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* About section */
+.about-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.about-row:last-child { border-bottom: none; }
+.about-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.about-value {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.btn-reset {
+  padding: 8px 20px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-danger);
+  color: var(--text-on-primary);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 180ms ease;
+}
+.btn-reset:hover { background: var(--color-danger-hover); }
+.btn-reset:active { transform: scale(0.96); }
+
+/* Toggle switch */
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.setting-row:last-child { border-bottom: none; }
+.setting-row-label {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.setting-row-desc {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 26px;
+  flex-shrink: 0;
+}
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: var(--bg-segmented);
+  border-radius: 13px;
+  transition: background 200ms ease;
+}
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  height: 22px;
+  width: 22px;
+  left: 2px;
+  bottom: 2px;
+  background: var(--raw-white);
+  border-radius: 50%;
+  transition: transform 200ms ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15), 0 0 0 0.5px rgba(0,0,0,0.04);
+}
+.toggle-switch input:checked + .toggle-slider {
+  background: var(--raw-green-online);
+}
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(18px);
+}
+.toggle-switch input:focus-visible + .toggle-slider {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Period summary — high/low dual highlight */
+.summary-grid-period {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.summary-item-dual {
+  background: var(--bg-surface-secondary);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.summary-item-dual-title {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+.summary-item-dual-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.summary-item-dual-cell {
+  flex: 1;
+  text-align: center;
+}
+.summary-item-dual-cell-label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+.summary-item-dual-cell-value {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.summary-item-dual-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--border-medium);
+  flex-shrink: 0;
+}
+.summary-item-dual-sub {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  text-align: center;
+  margin-top: -2px;
+}
+
+/* Scheduling note */
+.scheduling-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: var(--bg-surface-secondary);
+  border-radius: var(--radius-sm);
+}
+.scheduling-note-icon {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+/* ============================================
+   Skeleton loading (initial)
+   ============================================ */
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: 200px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-surface-secondary) 25%, var(--border-subtle) 50%, var(--bg-surface-secondary) 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+/* ============================================
+   Stock View — Overview & Detail
+   ============================================ */
+
+/* Stock detail (always visible in stock tab) */
+.stock-detail { height: 100%; display: block; }
+
+/* Stock grid (overview) */
+.stock-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+/* Stock card */
+.stock-card {
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all 200ms ease;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.stock-card:hover {
+  border-color: var(--border-medium);
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-1px);
+}
+.stock-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.stock-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+.stock-card-code {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+  background: var(--bg-surface-secondary);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+.stock-card-bottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+.stock-card-price {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.stock-card-change {
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.stock-card-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.stock-card-meta span {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Stock header (detail) */
+.stock-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.stock-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stock-header-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.stock-header-code {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+.stock-header-price {
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  margin: 4px 0;
+}
+.stock-header-change-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+.stock-header-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.stock-header-badge.up { background: var(--rate-up-bg); color: var(--rate-up); }
+.stock-header-badge.down { background: var(--rate-down-bg); color: var(--rate-down); }
+.stock-header-badge.flat { background: var(--bg-input); color: var(--rate-flat); }
+.stock-header-right {
+  text-align: right;
+}
+.stock-header-time {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+.stock-header-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+.stock-header-status.trading {
+  color: var(--raw-green-online);
+  background: rgba(52, 199, 89, 0.1);
+}
+.stock-header-status.closed {
+  color: var(--text-tertiary);
+  background: var(--bg-input);
+}
+
+/* Stock bottom section — order book + info panel */
+.stock-bottom-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+/* Order book */
+.order-book {
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  transition: all var(--transition);
+}
+.order-book-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 12px 16px 8px;
+  letter-spacing: -0.01em;
+}
+.order-book-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.order-book-table th {
+  font-weight: 500;
+  color: var(--text-tertiary);
+  padding: 6px 16px;
+  text-align: left;
+  font-size: 11px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.order-book-table th:last-child { text-align: right; }
+.order-book-table td {
+  padding: 5px 16px;
+  color: var(--text-primary);
+}
+.order-book-table td:last-child { text-align: right; font-weight: 600; }
+.order-book-table .ask-row td { color: var(--rate-down); }
+.order-book-table .bid-row td:last-child { color: var(--rate-up); }
+.order-book-divider {
+  border-top: 1px solid var(--border-subtle);
+}
+.order-book-spread {
+  text-align: center;
+  padding: 6px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  background: var(--bg-surface-secondary);
+}
+
+/* Stock info panel */
+.stock-info-panel {
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  padding: 12px 16px;
+  transition: all var(--transition);
+}
+.stock-info-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+  letter-spacing: -0.01em;
+}
+.stock-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+}
+.stock-info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+.stock-info-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+.stock-info-value {
+  font-size: 12px;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================
+   Platform Controls — macOS / Windows / Linux
+   ============================================ */
+
+/* Platform visibility: show/hide based on data-platform */
+.platform-controls,
+.win-window-controls,
+.linux-window-controls,
+.title-text-macos { display: none; }
+
+/* macOS defaults */
+html[data-platform="macos"] .platform-macos { display: flex; }
+html[data-platform="macos"] .title-text-macos { display: block; }
+
+/* Windows */
+html[data-platform="windows"] .platform-win { display: flex; }
+html[data-platform="windows"] .win-window-controls { display: flex; }
+
+/* Linux */
+html[data-platform="linux"] .platform-linux { display: flex; }
+html[data-platform="linux"] .linux-window-controls { display: flex; }
+
+/* Platform controls base */
+.platform-controls {
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ---- macOS traffic lights (existing, just ensure display) ---- */
+.platform-macos .traffic-lights {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ---- Windows 11 Title Bar ---- */
+.win-title-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+.win-title-label {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  letter-spacing: 0;
+}
+
+.win-window-controls {
+  display: none;
+  align-items: stretch;
+  height: 100%;
+  margin-left: auto;
+  margin-right: -1px;
+  overflow: hidden;
+  border-radius: 0 8px 0 0;
+}
+.win-ctrl-btn {
+  width: 46px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: background 100ms ease, color 100ms ease;
+  padding: 0;
+  border-radius: 0;
+  outline: none;
+  position: relative;
+}
+.win-ctrl-btn svg {
+  width: 10px;
+  height: 10px;
+  stroke-width: 1;
+  transition: stroke 100ms ease;
+}
+.win-ctrl-btn:hover {
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+.win-ctrl-btn:hover svg { stroke: var(--text-primary); }
+.win-ctrl-btn:active {
+  background: var(--bg-surface-secondary);
+  color: var(--text-secondary);
+}
+.win-ctrl-btn:active svg { stroke: var(--text-secondary); }
+
+/* Close button — special treatment */
+.win-close-btn {
+  border-radius: 0 8px 0 0;
+}
+.win-close-btn svg { stroke-width: 1.1; }
+.win-close-btn:hover {
+  background: #c42b1c;
+  color: var(--raw-white);
+}
+.win-close-btn:hover svg { stroke: var(--raw-white); }
+.win-close-btn:active {
+  background: #c42b1c;
+  filter: brightness(0.88);
+  color: rgba(255,255,255,0.72);
+}
+.win-close-btn:active svg { stroke: rgba(255,255,255,0.72); }
+
+/* Windows frame adjustments */
+html[data-platform="windows"] .window-frame {
+  border-radius: 8px;
+  border: 1px solid var(--border-medium);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.08);
+}
+html[data-platform="windows"] .title-bar {
+  height: 32px;
+  padding: 0 0 0 12px;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+}
+html[data-platform="windows"] .title-text {
+  left: 36px;
+  transform: none;
+  font-size: 12px;
+  font-weight: 400;
+}
+html[data-platform="windows"] .win-window-controls {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 32px;
+}
+html[data-platform="windows"] .title-bar-actions {
+  padding-right: 148px;
+}
+
+/* ---- Linux / GNOME Title Bar ---- */
+.linux-title-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+.linux-title-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.linux-window-controls {
+  display: none;
+  align-items: center;
+  gap: 2px;
+  margin-left: 8px;
+}
+.linux-ctrl-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: background 150ms ease, color 150ms ease;
+  padding: 0;
+  border-radius: 50%;
+  outline: none;
+}
+.linux-ctrl-btn:hover {
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+.linux-ctrl-btn:active {
+  background: var(--border-medium);
+}
+.linux-ctrl-btn.linux-close-btn:hover {
+  background: var(--color-danger);
+  color: var(--raw-white);
+}
+.linux-ctrl-btn.linux-close-btn:active {
+  background: var(--color-danger-hover);
+  color: var(--raw-white);
+}
+
+/* Linux frame adjustments — GNOME headerbar style */
+html[data-platform="linux"] .window-frame {
+  border-radius: 10px;
+  border: 1px solid var(--border-medium);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,0.1);
+}
+html[data-platform="linux"] .title-bar {
+  height: 44px;
+  padding: 0 12px;
+  background: var(--bg-nav);
+  backdrop-filter: saturate(140%) blur(12px);
+  -webkit-backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid var(--border-subtle);
+}
+html[data-platform="linux"] .title-text {
+  display: none;
+}
+
+/* ============================================
+   Focus states
+   ============================================ */
+button:focus-visible, input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+</style>
+</head>
+<body>
+
+<div class="window-frame" data-component="window-frame">
+  <!-- Title Bar -->
+  <header class="title-bar" data-component="title-bar">
+    <!-- macOS traffic lights -->
+    <div class="platform-controls platform-macos">
+      <div class="traffic-lights">
+        <div class="traffic-light tl-close" title="关闭"></div>
+        <div class="traffic-light tl-minimize" title="最小化"></div>
+        <div class="traffic-light tl-maximize" title="最大化"></div>
+      </div>
+    </div>
+    <!-- Windows controls -->
+    <div class="platform-controls platform-win">
+      <div class="win-title-icon">💱</div>
+      <div class="win-title-label">外汇查看器</div>
+    </div>
+    <!-- Linux/GNOME controls -->
+    <div class="platform-controls platform-linux">
+      <div class="linux-title-icon">💱</div>
+      <div class="linux-title-label">外汇查看器</div>
+    </div>
+
+    <span class="title-text title-text-macos">外汇查看器</span>
+
+    <div class="title-bar-actions">
+      <div class="refresh-indicator">
+        <span class="refresh-dot"></span>
+        <span id="countdown">30s</span>
+      </div>
+      <button class="theme-toggle" id="themeToggle" aria-label="切换主题" title="切换主题">
+        <span id="themeIcon">🌙</span>
+      </button>
+      <!-- Windows window controls (right side) -->
+      <div class="win-window-controls">
+        <button class="win-ctrl-btn" title="最小化" aria-label="最小化">
+          <svg width="10" height="10" viewBox="0 0 10 10"><line x1="0" y1="5.5" x2="10" y2="5.5" stroke="currentColor" stroke-width="1" stroke-linecap="square"/></svg>
+        </button>
+        <button class="win-ctrl-btn" title="最大化" aria-label="最大化">
+          <svg width="10" height="10" viewBox="0 0 10 10"><rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="square"/></svg>
+        </button>
+        <button class="win-ctrl-btn win-close-btn" title="关闭" aria-label="关闭">
+          <svg width="10" height="10" viewBox="0 0 10 10"><path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <!-- Linux/GNOME window controls (right side) -->
+      <div class="linux-window-controls">
+        <button class="linux-ctrl-btn" title="最小化" aria-label="最小化">
+          <svg width="10" height="10" viewBox="0 0 10 10"><line x1="0" y1="5" x2="10" y2="5" stroke="currentColor" stroke-width="1.5"/></svg>
+        </button>
+        <button class="linux-ctrl-btn" title="最大化" aria-label="最大化">
+          <svg width="10" height="10" viewBox="0 0 10 10"><rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>
+        </button>
+        <button class="linux-ctrl-btn linux-close-btn" title="关闭" aria-label="关闭">
+          <svg width="10" height="10" viewBox="0 0 10 10"><line x1="0" y1="0" x2="10" y2="10" stroke="currentColor" stroke-width="1.5"/><line x1="10" y1="0" x2="0" y2="10" stroke="currentColor" stroke-width="1.5"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation -->
+  <nav class="nav-bar" data-component="nav-bar">
+    <div class="nav-pills" role="tablist">
+      <button class="nav-pill active" data-view="overview" role="tab" aria-selected="true">总览</button>
+      <button class="nav-pill" data-view="detail" role="tab" aria-selected="false">汇率</button>
+      <button class="nav-pill" data-view="stock" role="tab" aria-selected="false">港股</button>
+      <button class="nav-pill" data-view="settings" role="tab" aria-selected="false">设置</button>
+    </div>
+  </nav>
+
+  <!-- Content -->
+  <main class="content" data-component="content">
+
+    <!-- ========== Overview View ========== -->
+    <section class="view active" id="view-overview" data-component="overview-view">
+      <div class="overview-content">
+        <!-- Market Indices -->
+        <div class="market-indices" id="marketIndices" data-component="market-indices"></div>
+
+        <!-- Section header -->
+        <div class="section-header">
+          <span class="section-title">汇率行情</span>
+          <span class="section-subtitle" id="overviewTime">更新于 --:--:--</span>
+        </div>
+
+        <!-- Currency pair grid -->
+        <div class="pair-grid" id="pairGrid" data-component="pair-grid"></div>
+
+        <!-- Stock section divider -->
+        <div style="height:32px;"></div>
+
+        <!-- HK Market Indices -->
+        <div class="market-indices" id="overviewStockIndices" data-component="overview-stock-indices"></div>
+
+        <!-- Stock section header -->
+        <div class="section-header">
+          <span class="section-title">港股行情</span>
+          <span class="section-subtitle" id="overviewStockTime">更新于 --:--:--</span>
+        </div>
+
+        <!-- Stock grid -->
+        <div class="stock-grid" id="overviewStockGrid" data-component="overview-stock-grid"></div>
+      </div>
+    </section>
+
+    <!-- ========== Detail View ========== -->
+    <section class="view" id="view-detail" data-component="detail-view">
+      <div class="detail-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" data-component="sidebar">
+          <div class="sidebar-search">
+            <input class="sidebar-search-input" type="text" placeholder="搜索货币对…" id="sidebarSearch" aria-label="搜索货币对">
+          </div>
+          <div class="sidebar-toolbar">
+            <span class="sidebar-toolbar-label" id="sidebarEditLabel"></span>
+            <button class="sidebar-edit-btn" id="sidebarEditBtn">编辑</button>
+          </div>
+          <div class="sidebar-list" id="sidebarList"></div>
+          <button class="sidebar-add-btn" id="sidebarAddBtn">+ 添加货币对</button>
+          <div class="sidebar-footer">
+            <span class="refresh-dot" style="width:5px;height:5px;"></span>
+            <span>自动刷新 <span id="sidebarCountdown">30s</span></span>
+          </div>
+        </aside>
+
+        <!-- Add currency panel overlay -->
+        <div class="add-panel-overlay" id="addPanelOverlay">
+          <div class="add-panel">
+            <div class="add-panel-header">
+              <span class="add-panel-title">添加货币对</span>
+              <button class="add-panel-close" id="addPanelClose">✕</button>
+            </div>
+            <div class="add-panel-search">
+              <input type="text" placeholder="搜索货币对…" id="addPanelSearch">
+            </div>
+            <div class="add-panel-list" id="addPanelList"></div>
+          </div>
+        </div>
+
+        <!-- Main detail area -->
+        <div class="detail-main" data-component="detail-main">
+          <!-- Rate header -->
+          <div class="rate-header" data-component="rate-header">
+            <div>
+              <div class="rate-pair-title" id="detailPairName">美元/人民币</div>
+              <div class="rate-value" id="detailRate" data-value="7.2456">7.2456</div>
+              <div class="rate-change-row">
+                <span class="rate-change-badge up" id="detailChange">+0.0123 (+0.17%)</span>
+              </div>
+            </div>
+            <div class="rate-update-time" id="detailUpdateTime">--:--:--</div>
+          </div>
+
+          <!-- Key metrics strip -->
+          <div class="key-metrics" id="keyMetrics" data-component="key-metrics"></div>
+
+          <!-- Period selector -->
+          <div class="period-selector" id="periodSelector">
+            <button class="period-btn active" data-period="fenShi">分时</button>
+            <button class="period-btn" data-period="dailyK">日K</button>
+            <button class="period-btn" data-period="weeklyK">周K</button>
+            <button class="period-btn" data-period="monthlyK">月K</button>
+            <button class="period-btn" data-period="quarterlyK">季K</button>
+            <button class="period-btn" data-period="yearlyK">年K</button>
+            <div class="period-more-wrap" id="periodMoreWrap">
+              <button class="period-btn period-more-btn" data-period="more" id="periodMoreBtn">更多<span class="chevron">▾</span></button>
+              <div class="period-dropdown" id="periodDropdown">
+                <button class="period-dropdown-item" data-period="1min">1分</button>
+                <button class="period-dropdown-item" data-period="5min">5分</button>
+                <button class="period-dropdown-item" data-period="15min">15分</button>
+                <button class="period-dropdown-item" data-period="30min">30分</button>
+                <button class="period-dropdown-item" data-period="60min">60分</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chart -->
+          <div class="chart-container" data-component="chart">
+            <div class="chart-area" id="chartArea"></div>
+          </div>
+
+          <!-- Period statistics -->
+          <div class="period-stats" id="periodStats" data-component="period-stats"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== Stock View ========== -->
+    <section class="view" id="view-stock" data-component="stock-view">
+      <div class="stock-detail" id="stockDetail">
+        <div class="detail-layout">
+          <aside class="sidebar stock-sidebar" data-component="stock-sidebar">
+            <div class="sidebar-search">
+              <input class="sidebar-search-input" type="text" placeholder="搜索股票代码或名称…" id="stockSidebarSearch" aria-label="搜索股票">
+            </div>
+            <div class="sidebar-toolbar">
+              <span class="sidebar-toolbar-label" id="stockSidebarEditLabel"></span>
+              <button class="sidebar-edit-btn" id="stockSidebarEditBtn">编辑</button>
+            </div>
+            <div class="sidebar-list" id="stockSidebarList"></div>
+            <button class="sidebar-add-btn" id="stockSidebarAddBtn">+ 添加股票</button>
+            <div class="sidebar-footer">
+              <span class="refresh-dot" style="width:5px;height:5px;"></span>
+              <span>自动刷新 <span id="stockSidebarCountdown">30s</span></span>
+            </div>
+          </aside>
+
+          <!-- Stock add panel overlay -->
+          <div class="add-panel-overlay" id="stockAddPanelOverlay">
+            <div class="add-panel">
+              <div class="add-panel-header">
+                <span class="add-panel-title">添加股票</span>
+                <button class="add-panel-close" id="stockAddPanelClose">✕</button>
+              </div>
+              <div class="add-panel-search">
+                <input type="text" placeholder="搜索股票代码或名称…" id="stockAddPanelSearch">
+              </div>
+              <div class="add-panel-list" id="stockAddPanelList"></div>
+            </div>
+          </div>
+
+          <div class="detail-main" data-component="stock-detail-main">
+            <div class="stock-header" id="stockHeader" data-component="stock-header"></div>
+            <div class="key-metrics" id="stockKeyMetrics" data-component="stock-key-metrics"></div>
+            <div class="period-selector" id="stockPeriodSelector">
+              <button class="period-btn active" data-period="fenShi">分时</button>
+              <button class="period-btn" data-period="dailyK">日K</button>
+              <button class="period-btn" data-period="weeklyK">周K</button>
+              <button class="period-btn" data-period="monthlyK">月K</button>
+              <button class="period-btn" data-period="quarterlyK">季K</button>
+              <button class="period-btn" data-period="yearlyK">年K</button>
+            </div>
+            <div class="chart-container" data-component="stock-chart">
+              <div class="chart-area" id="stockChartArea"></div>
+            </div>
+            <div class="stock-bottom-section">
+              <div class="order-book" id="orderBook" data-component="order-book"></div>
+              <div class="stock-info-panel" id="stockInfoPanel" data-component="stock-info-panel"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== Settings View ========== -->
+    <section class="view" id="view-settings" data-component="settings-view">
+      <div class="settings-content">
+
+        <!-- Appearance -->
+        <div class="settings-group">
+          <div class="settings-group-title">外观</div>
+          <div class="settings-group-desc">选择应用的外观主题</div>
+          <div class="theme-options" id="themeOptions">
+            <button class="theme-option" data-theme="system">
+              <div class="theme-option-icon">💻</div>
+              <div class="theme-option-label">跟随系统</div>
+            </button>
+            <button class="theme-option active" data-theme="light">
+              <div class="theme-option-icon">☀️</div>
+              <div class="theme-option-label">浅色</div>
+            </button>
+            <button class="theme-option" data-theme="dark">
+              <div class="theme-option-icon">🌙</div>
+              <div class="theme-option-label">深色</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Refresh interval -->
+        <div class="settings-group">
+          <div class="settings-group-title">刷新间隔</div>
+          <div class="settings-group-desc">设置汇率数据的自动刷新频率</div>
+          <div class="slider-row">
+            <div class="slider-value">30<span class="slider-unit">秒</span></div>
+            <div class="slider-track">
+              <input type="range" min="5" max="300" value="30" step="5" id="refreshSlider" aria-label="刷新间隔">
+            </div>
+          </div>
+          <div class="slider-presets">
+            <button class="slider-preset" data-val="5">5秒</button>
+            <button class="slider-preset" data-val="15">15秒</button>
+            <button class="slider-preset active" data-val="30">30秒</button>
+            <button class="slider-preset" data-val="60">1分钟</button>
+            <button class="slider-preset" data-val="120">2分钟</button>
+            <button class="slider-preset" data-val="300">5分钟</button>
+          </div>
+        </div>
+
+        <!-- Currency pairs -->
+        <div class="settings-group">
+          <div class="settings-group-title">货币对</div>
+          <div class="settings-group-desc">选择要显示的货币对（至少保留一个）</div>
+          <div class="pair-chips" id="pairChips"></div>
+        </div>
+
+        <div class="settings-group" id="notificationSubscriptions">
+          <div class="settings-group-title" id="notificationSubscriptionsTitle">通知订阅</div>
+          <div class="settings-group-desc">选择多个币种，为每个币种添加多条独立条件。任意一条满足即可提醒，与行情展示列表无关。</div>
+          <div class="subscription-demo">设计预览 · 以下为示例订阅，可直接编辑。仅当前页面有效，不会发送真实通知。</div>
+          <div class="pair-chips" id="notificationPairChips" role="group" aria-labelledby="notificationSubscriptionsTitle"></div>
+          <div class="notification-status" id="notificationSubscriptionStatus" role="status" aria-live="polite"></div>
+          <div class="subscription-cards" id="notificationCards"></div>
+          <details class="subscription-notes">
+            <summary>订阅设置策划说明与判断规则</summary>
+            <ul>
+              <li><strong>结构：</strong>多个币种 → 每个币种多条独立条件。新增条件不覆盖旧条件；当天最低和历史最低可以同时订阅。</li>
+              <li><strong>范围最低：</strong>每条选择当天、最近七天、最近一个月或历史最低，可附加“同时低于 / 高于指定值”的价格限制。</li>
+              <li><strong>指定价格：</strong>可独立添加多条低于或高于某个值的条件，无需选择最低价范围。阈值仅属于当前条件，各币种互不影响。</li>
+              <li><strong>交互：</strong>每条可添加、编辑、启用、暂停和删除。保存条件后才生效，取消不改变原条件；无条件或全部暂停时不提醒。取消选择币种只暂停该币种，重新选择会保留本页条件。</li>
+              <li><strong>触发：</strong>多条条件中任意一条满足即可；单条范围最低若附加价格限制，则需同时满足。最低价为触及或跌破（≤），价格阈值为严格低于（&lt;）或高于（&gt;），等于阈值不触发。</li>
+              <li><strong>范围口径：</strong>当天按本地日期；近七天含今天和前六天；最近一个月为近30个自然日、含今天，不指上一自然月。不设置每日提醒时段。</li>
+              <li><strong>历史与缺失：</strong>历史最低仅基于数据源实际覆盖的历史，目前接口最多约五年；没有所需数据的条件显示“数据不足，暂无法判断”，不阻塞其他条件。</li>
+              <li><strong>通知策略：</strong>同次更新命中同币种多条条件时合并通知并列出全部原因。按条件记录重复提醒状态，持续满足不随刷新重复推送；一条条件的提醒不能抑制另一条新命中的条件。</li>
+              <li><strong>总开关：</strong>关闭桌面通知会暂停所有提醒，但保留全部订阅和条件，仍可编辑。实际提醒还需要应用运行及系统通知权限。</li>
+              <li><strong>验收：</strong>同一币种可同时保存当天最低、历史最低和低于指定值；另一币种可设置不同范围及阈值；编辑、暂停、删除、取消编辑、无效输入与总开关互不串改。</li>
+              <li><strong>设计稿与正式应用：</strong>策划与交互设计统一保存在本 HTML 文件；本页示例仅作预览。正式应用默认无订阅示例，配置自动保存到本机；旧版已选币种保留，没有条件时需手动添加。</li>
+              <li><strong>真实判断：</strong>正式应用运行时按刷新间隔检测，低点仅基于有效行情；当天依据分时点的本地日期，其他范围依据数据源日K日期，展示实际覆盖起止。历史请求失败不影响纯价格或当天条件，数据缺失不当作条件恢复。</li>
+              <li><strong>状态生命周期：</strong>条件成功提醒后持续命中不重复，确认不满足后再次满足可重新提醒；编辑仅重置本条条件，当天条件按新日期重新判断。暂停保留已提醒状态，重启应用重新判断最新行情。不再按币种或等级限流，以免漏掉另一条新命中条件。</li>
+            </ul>
+          </details>
+        </div>
+
+        <dialog class="subscription-dialog" id="notificationRuleDialog" aria-labelledby="notificationRuleDialogTitle" aria-describedby="notificationRuleDialogIntro">
+          <form id="notificationRuleForm" novalidate>
+            <h2 id="notificationRuleDialogTitle">添加通知条件</h2>
+            <p class="subscription-dialog-intro" id="notificationRuleDialogIntro"></p>
+            <div class="subscription-field">
+              <label for="notificationConditionType">提醒类型</label>
+              <select id="notificationConditionType">
+                <option value="low">范围最低提醒</option>
+                <option value="price">指定价格提醒</option>
+              </select>
+            </div>
+            <div class="subscription-field" id="notificationPeriodField">
+              <label for="notificationConditionPeriod">选择统计范围</label>
+              <select id="notificationConditionPeriod" aria-describedby="notificationPeriodHint">
+                <option value="day">当天最低</option>
+                <option value="week">最近七天最低</option>
+                <option value="month">最近一个月最低</option>
+                <option value="history">历史最低</option>
+              </select>
+              <small id="notificationPeriodHint"></small>
+            </div>
+            <div class="subscription-field">
+              <label for="notificationConditionComparison" id="notificationComparisonLabel">附加价格限制</label>
+              <select id="notificationConditionComparison">
+                <option value="none">不限制价格</option>
+                <option value="below">同时低于指定值</option>
+                <option value="above">同时高于指定值</option>
+              </select>
+            </div>
+            <div class="subscription-field" id="notificationValueField" hidden>
+              <label for="notificationConditionValue">汇率阈值</label>
+              <input id="notificationConditionValue" type="number" inputmode="decimal" min="0" step="any" placeholder="输入大于 0 的汇率" aria-describedby="notificationValueUnit notificationValueError">
+              <small id="notificationValueUnit"></small>
+              <div class="subscription-error" id="notificationValueError" role="alert"></div>
+            </div>
+            <div class="subscription-preview" id="notificationConditionPreview" role="status" aria-live="polite"></div>
+            <div class="subscription-dialog-actions">
+              <button class="subscription-button" id="notificationRuleCancel" type="button">取消</button>
+              <button class="subscription-button primary" id="notificationRuleSave" type="submit">保存条件</button>
+            </div>
+          </form>
+        </dialog>
+
+        <!-- Language -->
+        <div class="settings-group">
+          <div class="settings-group-title">语言</div>
+          <div class="settings-group-desc">选择应用的显示语言</div>
+          <div class="lang-options">
+            <button class="lang-option active">
+              <div class="lang-option-label">中文</div>
+              <div class="lang-option-sub">简体中文</div>
+            </button>
+            <button class="lang-option">
+              <div class="lang-option-label">English</div>
+              <div class="lang-option-sub">英文</div>
+            </button>
+            <button class="lang-option">
+              <div class="lang-option-label">日本語</div>
+              <div class="lang-option-sub">日文</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- General -->
+        <div class="settings-group">
+          <div class="settings-group-title">常规</div>
+          <div class="settings-group-desc">应用行为与系统设置</div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-row-label">开机启动</div>
+              <div class="setting-row-desc">系统启动时自动运行应用</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="autoStartToggle" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-row-label">桌面通知</div>
+              <div class="setting-row-desc">订阅币种任一启用条件满足时提醒；关闭后保留所有条件</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="notificationToggle" aria-label="桌面通知" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-row-label">最小化到托盘</div>
+              <div class="setting-row-desc">关闭窗口时最小到系统托盘</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="trayToggle" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- About -->
+        <div class="settings-group">
+          <div class="settings-group-title">关于</div>
+          <div class="about-row">
+            <span class="about-label">版本</span>
+            <span class="about-value">2.0.0</span>
+          </div>
+          <div class="about-row">
+            <span class="about-label">数据来源</span>
+            <span class="about-value">百度金融</span>
+          </div>
+          <div class="about-row">
+            <span class="about-label">操作</span>
+            <button class="btn-reset">重置所有设置</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+// ============================================
+// Mock Data
+// ============================================
+const ALL_PAIRS = [
+  { code: 'USDCNY', name: '美元/人民币', flag: '🇺🇸', rate: 7.2456, prevClose: 7.2333, open: 7.2380, high: 7.2512, low: 7.2301, bid: 7.2450, ask: 7.2462, change: 0.0123, changePct: 0.17 },
+  { code: 'JPYCNY', name: '日元/人民币', flag: '🇯🇵', rate: 0.04812, prevClose: 0.04845, open: 0.04840, high: 0.04855, low: 0.04798, bid: 0.04810, ask: 0.04814, change: -0.00033, changePct: -0.68 },
+  { code: 'EURCNY', name: '欧元/人民币', flag: '🇪🇺', rate: 7.8934, prevClose: 7.8712, open: 7.8750, high: 7.9102, low: 7.8650, bid: 7.8928, ask: 7.8940, change: 0.0222, changePct: 0.28 },
+  { code: 'GBPCNY', name: '英镑/人民币', flag: '🇬🇧', rate: 9.1867, prevClose: 9.1623, open: 9.1680, high: 9.2045, low: 9.1500, bid: 9.1860, ask: 9.1874, change: 0.0244, changePct: 0.27 },
+  { code: 'USDJPY', name: '美元/日元', flag: '💱', rate: 150.62, prevClose: 150.95, open: 150.85, high: 151.20, low: 150.35, bid: 150.60, ask: 150.64, change: -0.33, changePct: -0.22 },
+  { code: 'AUDCNY', name: '澳元/人民币', flag: '🇦🇺', rate: 4.7235, prevClose: 4.7312, open: 4.7290, high: 4.7410, low: 4.7150, bid: 4.7228, ask: 4.7242, change: -0.0077, changePct: -0.16 },
+  { code: 'NZDCNY', name: '纽元/人民币', flag: '🇳🇿', rate: 4.3567, prevClose: 4.3621, open: 4.3600, high: 4.3750, low: 4.3480, bid: 4.3560, ask: 4.3574, change: -0.0054, changePct: -0.12 },
+  { code: 'HKDCNY', name: '港币/人民币', flag: '🇭🇰', rate: 0.9291, prevClose: 0.9275, open: 0.9278, high: 0.9305, low: 0.9268, bid: 0.9290, ask: 0.9292, change: 0.0016, changePct: 0.17 },
+  { code: 'CADCNY', name: '加元/人民币', flag: '🇨🇦', rate: 5.3120, prevClose: 5.2980, open: 5.3010, high: 5.3280, low: 5.2890, bid: 5.3112, ask: 5.3128, change: 0.0140, changePct: 0.26 },
+  { code: 'CHFCNY', name: '瑞郎/人民币', flag: '🇨🇭', rate: 8.1450, prevClose: 8.1320, open: 8.1360, high: 8.1680, low: 8.1200, bid: 8.1440, ask: 8.1460, change: 0.0130, changePct: 0.16 },
+  { code: 'SGDCNY', name: '新元/人民币', flag: '🇸🇬', rate: 5.4230, prevClose: 5.4100, open: 5.4150, high: 5.4380, low: 5.4020, bid: 5.4222, ask: 5.4238, change: 0.0130, changePct: 0.24 },
+  { code: 'THBCNY', name: '泰铢/人民币', flag: '🇹🇭', rate: 0.2045, prevClose: 0.2052, open: 0.2050, high: 0.2058, low: 0.2038, bid: 0.2044, ask: 0.2046, change: -0.0007, changePct: -0.34 },
+  { code: 'KRWCNY', name: '韩元/人民币', flag: '🇰🇷', rate: 0.005312, prevClose: 0.005280, open: 0.005290, high: 0.005350, low: 0.005260, bid: 0.005310, ask: 0.005314, change: 0.000032, changePct: 0.61 },
+  { code: 'MYRCNY', name: '林吉特/人民币', flag: '🇲🇾', rate: 1.6320, prevClose: 1.6280, open: 1.6290, high: 1.6380, low: 1.6240, bid: 1.6315, ask: 1.6325, change: 0.0040, changePct: 0.25 },
+  { code: 'RUBCNY', name: '卢布/人民币', flag: '🇷🇺', rate: 0.08120, prevClose: 0.08180, open: 0.08160, high: 0.08230, low: 0.08050, bid: 0.08115, ask: 0.08125, change: -0.00060, changePct: -0.73 },
+  { code: 'ZARCNY', name: '兰特/人民币', flag: '🇿🇦', rate: 0.3985, prevClose: 0.3970, open: 0.3975, high: 0.4010, low: 0.3955, bid: 0.3983, ask: 0.3987, change: 0.0015, changePct: 0.38 },
+];
+
+let PAIRS = ALL_PAIRS.slice(0, 8);
+const notificationPairs = new Set(['USDCNY', 'JPYCNY']);
+const notificationRules = new Map([
+  ['USDCNY', [
+    { id: 1, type: 'low', period: 'day', comparison: 'none', value: null, enabled: true },
+    { id: 2, type: 'low', period: 'history', comparison: 'below', value: 7, enabled: true },
+    { id: 3, type: 'price', period: null, comparison: 'below', value: 7.2, enabled: true },
+  ]],
+  ['JPYCNY', [
+    { id: 4, type: 'low', period: 'week', comparison: 'none', value: null, enabled: true },
+    { id: 5, type: 'price', period: null, comparison: 'above', value: 0.05, enabled: true },
+  ]],
+]);
+const notificationPeriods = {
+  day: { label: '当天最低', hint: '按本地日期统计当天已有数据的最低价。' },
+  week: { label: '最近七天最低', hint: '包含今天和前六个自然日，不是上一自然周。' },
+  month: { label: '最近一个月最低', hint: '指最近30个自然日，包含今天，不是上一自然月。' },
+  history: { label: '历史最低', hint: '基于数据源实际覆盖的历史，目前接口最多约五年；数据不足时不判断该条件。' },
+};
+let nextNotificationRuleId = 6;
+let notificationEditor = null;
+
+const INDICES = [
+  { name: '美元指数 DXY', value: '104.32', change: -0.23, changePct: -0.22 },
+  { name: '人民币指数 CFETS', value: '99.87', change: 0.15, changePct: 0.15 },
+  { name: '欧元指数', value: '103.45', change: 0.31, changePct: 0.30 },
+  { name: '在岸/离岸价差', value: '0.0123', change: -0.0015, changePct: -1.20 },
+];
+
+const ALL_STOCKS = [
+  { code: '00700', name: '腾讯控股', price: 438.20, prevClose: 432.60, open: 433.00, high: 441.80, low: 431.20, volume: 18523400, turnover: 81.2, pe: 24.8, pb: 5.6, marketCap: 41820, high52w: 482.00, low52w: 260.40 },
+  { code: '09988', name: '阿里巴巴-W', price: 89.35, prevClose: 87.80, open: 88.10, high: 90.25, low: 87.50, volume: 42315600, turnover: 37.8, pe: 15.2, pb: 1.8, marketCap: 17680, high52w: 117.80, low52w: 62.15 },
+  { code: '03690', name: '美团-W', price: 168.50, prevClose: 165.30, open: 166.00, high: 170.40, low: 164.80, volume: 12456800, turnover: 21.0, pe: 42.5, pb: 4.2, marketCap: 10420, high52w: 195.60, low52w: 98.50 },
+  { code: '01810', name: '小米集团-W', price: 52.30, prevClose: 51.60, open: 51.80, high: 53.10, low: 51.20, volume: 35678200, turnover: 18.7, pe: 28.3, pb: 3.8, marketCap: 13080, high52w: 62.80, low52w: 14.32 },
+  { code: '09618', name: '京东集团-SW', price: 158.20, prevClose: 156.80, open: 157.00, high: 160.50, low: 155.60, volume: 5234100, turnover: 8.3, pe: 12.6, pb: 1.5, marketCap: 4960, high52w: 198.40, low52w: 98.20 },
+  { code: '09888', name: '百度集团-SW', price: 102.50, prevClose: 100.80, open: 101.20, high: 104.30, low: 100.40, volume: 8912300, turnover: 9.1, pe: 11.8, pb: 1.1, marketCap: 2860, high52w: 145.20, low52w: 72.50 },
+  { code: '02318', name: '中国平安', price: 52.80, prevClose: 52.10, open: 52.30, high: 53.40, low: 51.80, volume: 21345600, turnover: 11.3, pe: 6.2, pb: 0.7, marketCap: 9520, high52w: 63.50, low52w: 32.80 },
+  { code: '00941', name: '中国移动', price: 76.40, prevClose: 75.60, open: 75.80, high: 77.20, low: 75.20, volume: 15234500, turnover: 11.6, pe: 11.5, pb: 1.3, marketCap: 16420, high52w: 84.60, low52w: 56.30 },
+  { code: '00780', name: '同程旅行', price: 18.42, prevClose: 18.10, open: 18.20, high: 18.80, low: 17.96, volume: 9876500, turnover: 1.8, pe: 18.5, pb: 2.8, marketCap: 420, high52w: 24.60, low52w: 10.82 },
+  { code: '00981', name: '中芯国际', price: 28.60, prevClose: 27.80, open: 28.00, high: 29.20, low: 27.60, volume: 28765400, turnover: 8.2, pe: 32.1, pb: 1.2, marketCap: 2260, high52w: 38.50, low52w: 14.20 },
+  { code: '09999', name: '网易-S', price: 158.80, prevClose: 157.20, open: 157.50, high: 161.40, low: 156.80, volume: 3456700, turnover: 5.5, pe: 16.8, pb: 3.5, marketCap: 5140, high52w: 198.20, low52w: 118.40 },
+  { code: '01024', name: '快手-W', price: 58.90, prevClose: 57.60, open: 57.80, high: 59.80, low: 57.20, volume: 14567800, turnover: 8.6, pe: 22.4, pb: 2.6, marketCap: 2530, high52w: 76.50, low52w: 38.20 },
+];
+
+// Add computed fields
+ALL_STOCKS.forEach(s => {
+  s.change = parseFloat((s.price - s.prevClose).toFixed(2));
+  s.changePct = parseFloat(((s.change / s.prevClose) * 100).toFixed(2));
+});
+
+let STOCKS = ALL_STOCKS.slice(0, 8);
+
+const HK_INDICES = [
+  { name: '恒生指数', value: '18,235.42', change: 128.36, changePct: 0.71 },
+  { name: '恒生科技指数', value: '3,856.72', change: 45.23, changePct: 1.19 },
+  { name: '国企指数', value: '6,412.88', change: 52.14, changePct: 0.82 },
+  { name: '港股通净买入', value: '32.5亿', change: 8.2, changePct: 33.74 },
+];
+
+// Generate sparkline data (24 points)
+function generateSparkline(baseRate, volatility, trend) {
+  const pts = [];
+  let v = baseRate;
+  for (let i = 0; i < 24; i++) {
+    v += (Math.random() - 0.5 + trend * 0.02) * volatility * baseRate;
+    pts.push(v);
+  }
+  return pts;
+}
+
+// Generate intraday data (minute-by-minute, ~240 points for 4 hours)
+function generateIntradayData(pair) {
+  const data = [];
+  let price = pair.open;
+  const now = new Date();
+  const startHour = 9;
+  for (let i = 0; i < 240; i++) {
+    const t = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHour, i);
+    price += (Math.random() - 0.498) * 0.002 * price;
+    data.push({
+      time: t.getHours().toString().padStart(2,'0') + ':' + t.getMinutes().toString().padStart(2,'0'),
+      price: parseFloat(price.toFixed(pair.rate < 1 ? 5 : 4))
+    });
+  }
+  return data;
+}
+
+// Generate K-line data
+function generateKlineData(pair, days) {
+  const data = [];
+  let price = pair.rate * (1 - days * 0.0003 * (pair.change > 0 ? 1 : -1));
+  for (let i = 0; i < Math.min(days, 60); i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - days + i);
+    const open = price;
+    const change = (Math.random() - 0.48) * 0.008 * price;
+    const close = open + change;
+    const high = Math.max(open, close) + Math.random() * 0.004 * price;
+    const low = Math.min(open, close) - Math.random() * 0.004 * price;
+    const vol = Math.floor(50 + Math.random() * 150);
+    data.push({
+      date: (d.getMonth()+1) + '/' + d.getDate(),
+      open: parseFloat(open.toFixed(pair.rate < 1 ? 5 : 4)),
+      close: parseFloat(close.toFixed(pair.rate < 1 ? 5 : 4)),
+      high: parseFloat(high.toFixed(pair.rate < 1 ? 5 : 4)),
+      low: parseFloat(low.toFixed(pair.rate < 1 ? 5 : 4)),
+      volume: vol
+    });
+    price = close;
+  }
+  return data;
+}
+
+// Generate minute-level K-line data
+function generateMinuteKlineData(pair, totalBars, intervalMinutes) {
+  const data = [];
+  let price = pair.open;
+  const now = new Date();
+  const rd = pair.rate < 1 ? 5 : 4;
+  for (let i = 0; i < totalBars; i++) {
+    const t = new Date(now.getTime() - (totalBars - i) * intervalMinutes * 60000);
+    const open = price;
+    const change = (Math.random() - 0.498) * 0.001 * price;
+    const close = open + change;
+    const high = Math.max(open, close) + Math.random() * 0.0005 * price;
+    const low = Math.min(open, close) - Math.random() * 0.0005 * price;
+    const vol = Math.floor(20 + Math.random() * 80);
+    const hh = t.getHours().toString().padStart(2, '0');
+    const mm = t.getMinutes().toString().padStart(2, '0');
+    let label = hh + ':' + mm;
+    if (intervalMinutes >= 60 && i % Math.ceil(240 / intervalMinutes) === 0) {
+      label = (t.getMonth()+1) + '/' + t.getDate() + ' ' + label;
+    }
+    data.push({
+      date: label,
+      open: parseFloat(open.toFixed(rd)),
+      close: parseFloat(close.toFixed(rd)),
+      high: parseFloat(high.toFixed(rd)),
+      low: parseFloat(low.toFixed(rd)),
+      volume: vol
+    });
+    price = close;
+  }
+  return data;
+}
+
+// Generate weekly/monthly/quarterly/yearly K-line data with custom labels
+function generateLongKlineData(pair, count, labelType) {
+  const data = [];
+  let price = pair.rate * (1 - count * 0.001 * (pair.change > 0 ? 1 : -1));
+  const rd = pair.rate < 1 ? 5 : 4;
+  for (let i = 0; i < count; i++) {
+    const d = new Date();
+    if (labelType === 'week') d.setDate(d.getDate() - (count - i) * 7);
+    else if (labelType === 'month') d.setMonth(d.getMonth() - (count - i));
+    else if (labelType === 'quarter') d.setMonth(d.getMonth() - (count - i) * 3);
+    else if (labelType === 'year') d.setFullYear(d.getFullYear() - (count - i));
+    const open = price;
+    const change = (Math.random() - 0.48) * 0.012 * price;
+    const close = open + change;
+    const high = Math.max(open, close) + Math.random() * 0.006 * price;
+    const low = Math.min(open, close) - Math.random() * 0.006 * price;
+    const vol = Math.floor(80 + Math.random() * 200);
+    let label;
+    if (labelType === 'week') label = (d.getMonth()+1) + '/' + d.getDate();
+    else if (labelType === 'month') label = d.getFullYear() + '/' + (d.getMonth()+1);
+    else if (labelType === 'quarter') label = d.getFullYear() + ' Q' + Math.ceil((d.getMonth()+1)/3);
+    else label = d.getFullYear().toString();
+    data.push({
+      date: label,
+      open: parseFloat(open.toFixed(rd)),
+      close: parseFloat(close.toFixed(rd)),
+      high: parseFloat(high.toFixed(rd)),
+      low: parseFloat(low.toFixed(rd)),
+      volume: vol
+    });
+    price = close;
+  }
+  return data;
+}
+
+// ============================================
+// Sparkline SVG generator
+// ============================================
+function createSparkline(data, isUp) {
+  const w = 64, h = 32, pad = 2;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const points = data.map((v, i) => {
+    const x = pad + (i / (data.length - 1)) * (w - 2 * pad);
+    const y = pad + (1 - (v - min) / range) * (h - 2 * pad);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  const color = isUp ? 'var(--rate-up)' : 'var(--rate-down)';
+  const areaColor = isUp ? 'var(--rate-up-bg)' : 'var(--rate-down-bg)';
+
+  // Area path
+  const areaPoints = points.join(' ');
+  const firstPoint = points[0];
+  const lastPoint = points[points.length - 1];
+  const areaPath = `M${firstPoint} L${areaPoints.split(' ').slice(1).join(' L')} L${lastPoint.split(',')[0]},${h} L${firstPoint.split(',')[0]},${h} Z`;
+
+  return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="grad-${isUp?'up':'down'}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${color}" stop-opacity="0.15"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <path d="${areaPath}" fill="url(#grad-${isUp?'up':'down'})" />
+    <polyline points="${areaPoints}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+
+// ============================================
+// State
+// ============================================
+let currentView = 'overview';
+let currentPair = 0;
+let currentPeriod = 'fenShi';
+let countdownValue = 30;
+let myChart = null;
+let isEditing = false;
+let currentStock = 0;
+let stockPeriod = 'fenShi';
+let isStockEditing = false;
+let myStockChart = null;
+
+// ============================================
+// Render functions
+// ============================================
+
+function renderMarketIndices() {
+  const el = document.getElementById('marketIndices');
+  el.innerHTML = INDICES.map(idx => {
+    const isUp = idx.change > 0;
+    const cls = isUp ? 'rate-up' : 'rate-down';
+    const sign = isUp ? '+' : '';
+    return `<div class="index-card">
+      <div class="index-card-label">${idx.name}</div>
+      <div class="index-card-value">${idx.value}</div>
+      <div class="index-card-change ${cls}">${sign}${idx.change.toFixed(idx.changePct > 1 || idx.changePct < -1 ? 2 : 4)} (${sign}${idx.changePct.toFixed(2)}%)</div>
+    </div>`;
+  }).join('');
+}
+
+function renderPairGrid() {
+  const el = document.getElementById('pairGrid');
+  el.innerHTML = PAIRS.map((pair, i) => {
+    const isUp = pair.change > 0;
+    const cls = isUp ? 'rate-up' : pair.change < 0 ? 'rate-down' : 'rate-flat';
+    const sign = isUp ? '+' : '';
+    const rateDecimals = pair.rate < 1 ? 5 : 4;
+    const sparkData = generateSparkline(pair.rate, 0.003, isUp ? 1 : -1);
+    return `<div class="pair-card" data-index="${i}" data-component="pair-card" data-value="${pair.rate.toFixed(rateDecimals)}" role="button" tabindex="0" aria-label="${pair.name} 当前汇率 ${pair.rate.toFixed(rateDecimals)}">
+      <div class="pair-flag">${pair.flag}</div>
+      <div class="pair-info">
+        <div class="pair-name">${pair.name}</div>
+        <div class="pair-label">${pair.code}</div>
+      </div>
+      <div class="pair-spark" data-value="${pair.rate.toFixed(rateDecimals)}">${createSparkline(sparkData, isUp)}</div>
+      <div class="pair-rate-section">
+        <div class="pair-rate">${pair.rate.toFixed(rateDecimals)}</div>
+        <div class="pair-change ${cls}">
+          <span>${sign}${pair.change.toFixed(rateDecimals)}</span>
+          <span>${sign}${pair.changePct.toFixed(2)}%</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Click handlers
+  el.querySelectorAll('.pair-card').forEach(card => {
+    card.addEventListener('click', () => {
+      currentPair = parseInt(card.dataset.index);
+      switchView('detail');
+    });
+    card.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); }
+    });
+  });
+}
+
+function setEditMode(editing) {
+  isEditing = editing;
+  const sidebar = document.querySelector('.sidebar');
+  const editBtn = document.getElementById('sidebarEditBtn');
+  const editLabel = document.getElementById('sidebarEditLabel');
+  const addBtn = document.getElementById('sidebarAddBtn');
+
+  if (sidebar) sidebar.classList.toggle('editing', isEditing);
+  if (editBtn) {
+    editBtn.textContent = isEditing ? '完成' : '编辑';
+    editBtn.classList.toggle('done', isEditing);
+  }
+  if (editLabel) {
+    editLabel.textContent = isEditing ? '拖动排序 · 点击 ✕ 移除' : '';
+  }
+  if (addBtn) {
+    addBtn.style.display = isEditing ? 'none' : '';
+  }
+
+  renderSidebar();
+}
+
+function renderSidebar() {
+  const el = document.getElementById('sidebarList');
+  el.innerHTML = PAIRS.map((pair, i) => {
+    const isUp = pair.change > 0;
+    const cls = isUp ? 'rate-up' : pair.change < 0 ? 'rate-down' : 'rate-flat';
+    const sign = isUp ? '+' : '';
+    const rateDecimals = pair.rate < 1 ? 5 : 4;
+    const draggableAttr = isEditing ? ' draggable="true"' : '';
+    return `<div class="sidebar-item ${i === currentPair ? 'active' : ''}" data-index="${i}"${draggableAttr} role="button" tabindex="0">
+      <span class="sidebar-item-drag" title="拖动排序">⠿</span>
+      <div class="sidebar-item-flag">${pair.flag}</div>
+      <div class="sidebar-item-info">
+        <div class="sidebar-item-name">${pair.name}</div>
+        <div class="sidebar-item-rate">${pair.rate.toFixed(rateDecimals)}</div>
+      </div>
+      <div class="sidebar-item-change ${cls}">${sign}${pair.changePct.toFixed(2)}%</div>
+      <button class="sidebar-item-remove" data-remove="${i}" title="移除" aria-label="移除 ${pair.name}">✕</button>
+    </div>`;
+  }).join('');
+
+  el.querySelectorAll('.sidebar-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      if (e.target.closest('.sidebar-item-remove')) return;
+      if (isEditing) return; // Block pair switching in edit mode
+      currentPair = parseInt(item.dataset.index);
+      renderSidebar();
+      renderDetailHeader();
+      renderChart();
+      renderKeyMetrics();
+      renderPeriodStats();
+    });
+  });
+
+  el.querySelectorAll('.sidebar-item-remove').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      removePair(parseInt(btn.dataset.remove));
+    });
+  });
+
+  // Drag-and-drop reordering (only active in edit mode)
+  if (!isEditing) return;
+
+  let dragSrcIndex = null;
+  const items = el.querySelectorAll('.sidebar-item');
+
+  items.forEach(item => {
+    item.addEventListener('dragstart', (e) => {
+      dragSrcIndex = parseInt(item.dataset.index);
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', dragSrcIndex);
+    });
+
+    item.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const rect = item.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      item.classList.remove('drag-over-top', 'drag-over-bottom');
+      if (e.clientY < midY) {
+        item.classList.add('drag-over-top');
+      } else {
+        item.classList.add('drag-over-bottom');
+      }
+    });
+
+    item.addEventListener('dragleave', () => {
+      item.classList.remove('drag-over-top', 'drag-over-bottom');
+    });
+
+    item.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const fromIndex = dragSrcIndex;
+      const toIndex = parseInt(item.dataset.index);
+      if (fromIndex === null || fromIndex === toIndex) return;
+
+      const rect = item.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      const insertBefore = e.clientY < midY;
+
+      let insertAt = insertBefore ? toIndex : toIndex + 1;
+      if (fromIndex < insertAt) insertAt--;
+
+      if (fromIndex !== insertAt) {
+        const [moved] = PAIRS.splice(fromIndex, 1);
+        PAIRS.splice(insertAt, 0, moved);
+
+        if (currentPair === fromIndex) {
+          currentPair = insertAt;
+        } else if (fromIndex < currentPair && insertAt >= currentPair) {
+          currentPair--;
+        } else if (fromIndex > currentPair && insertAt <= currentPair) {
+          currentPair++;
+        }
+      }
+
+      renderSidebar();
+    });
+
+    item.addEventListener('dragend', () => {
+      items.forEach(it => it.classList.remove('dragging', 'drag-over-top', 'drag-over-bottom'));
+      dragSrcIndex = null;
+    });
+  });
+}
+
+function removePair(index) {
+  if (PAIRS.length <= 1) return;
+  PAIRS.splice(index, 1);
+  if (currentPair >= PAIRS.length) currentPair = PAIRS.length - 1;
+  else if (currentPair > index) currentPair--;
+  else if (currentPair === index) currentPair = Math.min(index, PAIRS.length - 1);
+  renderSidebar();
+  renderDetailHeader();
+  renderChart();
+  renderKeyMetrics();
+  renderPeriodStats();
+}
+
+function addPair(code) {
+  const existing = ALL_PAIRS.find(p => p.code === code);
+  if (!existing) return;
+  if (PAIRS.find(p => p.code === code)) return;
+  PAIRS.push({ ...existing });
+  renderSidebar();
+  renderPairChips();
+}
+
+function renderAddPanel(filter) {
+  const el = document.getElementById('addPanelList');
+  const q = (filter || '').toLowerCase();
+  const activeCodes = new Set(PAIRS.map(p => p.code));
+  const available = ALL_PAIRS.filter(p =>
+    !activeCodes.has(p.code) &&
+    (p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q))
+  );
+  if (available.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-tertiary);font-size:13px;">没有更多可添加的货币对</div>';
+    return;
+  }
+  el.innerHTML = available.map(p => `<div class="add-panel-item" data-code="${p.code}">
+    <div class="add-panel-item-flag">${p.flag}</div>
+    <div class="add-panel-item-info">
+      <div class="add-panel-item-name">${p.name}</div>
+      <div class="add-panel-item-code">${p.code}</div>
+    </div>
+    <span class="add-panel-item-add">+</span>
+  </div>`).join('');
+
+  el.querySelectorAll('.add-panel-item').forEach(item => {
+    item.addEventListener('click', () => {
+      addPair(item.dataset.code);
+      renderAddPanel(document.getElementById('addPanelSearch').value);
+    });
+  });
+}
+
+function renderDetailHeader() {
+  const pair = PAIRS[currentPair];
+  const isUp = pair.change > 0;
+  const cls = isUp ? 'up' : pair.change < 0 ? 'down' : 'flat';
+  const sign = isUp ? '+' : '';
+  const rateDecimals = pair.rate < 1 ? 5 : 4;
+
+  document.getElementById('detailPairName').textContent = pair.name;
+  const rateEl = document.getElementById('detailRate');
+  rateEl.textContent = pair.rate.toFixed(rateDecimals);
+  rateEl.setAttribute('data-value', pair.rate.toFixed(rateDecimals));
+  rateEl.classList.add('flash');
+  setTimeout(() => rateEl.classList.remove('flash'), 600);
+
+  const changeEl = document.getElementById('detailChange');
+  changeEl.className = 'rate-change-badge ' + cls;
+  changeEl.textContent = `${sign}${pair.change.toFixed(rateDecimals)} (${sign}${pair.changePct.toFixed(2)}%)`;
+
+  const now = new Date();
+  document.getElementById('detailUpdateTime').textContent =
+    now.getHours().toString().padStart(2,'0') + ':' +
+    now.getMinutes().toString().padStart(2,'0') + ':' +
+    now.getSeconds().toString().padStart(2,'0');
+}
+
+function renderChart() {
+  const pair = PAIRS[currentPair];
+  const chartDom = document.getElementById('chartArea');
+
+  if (myChart) { myChart.dispose(); }
+  myChart = echarts.init(chartDom);
+
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const labelColor = isDark ? '#98989d' : '#86868b';
+  const tooltipBg = isDark ? 'rgba(58,58,60,0.95)' : 'rgba(255,255,255,0.95)';
+  const tooltipBorder = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
+  const tooltipText = isDark ? '#f5f5f7' : '#1d1d1f';
+  const accentColor = isDark ? '#2997ff' : '#0071e3';
+  const upColor = isDark ? '#ff6961' : '#ef5350';
+  const downColor = isDark ? '#4ecdc4' : '#26a69a';
+
+  if (currentPeriod === 'fenShi') {
+    const data = generateIntradayData(pair);
+    const times = data.map(d => d.time);
+    const prices = data.map(d => d.price);
+
+    myChart.setOption({
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: tooltipBg,
+        borderColor: tooltipBorder,
+        textStyle: { color: tooltipText, fontSize: 12, fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' },
+        formatter: function(params) {
+          const p = params[0];
+          const decimals = pair.rate < 1 ? 5 : 4;
+          return `<div style="font-weight:600;margin-bottom:4px">${p.name}</div>
+                  <div style="font-size:16px;font-weight:700">${p.value.toFixed(decimals)}</div>`;
+        }
+      },
+      grid: { top: 20, right: 16, bottom: 32, left: 56 },
+      xAxis: {
+        type: 'category',
+        data: times,
+        axisLine: { lineStyle: { color: gridColor } },
+        axisTick: { show: false },
+        axisLabel: { color: labelColor, fontSize: 10, interval: Math.floor(times.length / 6) },
+        boundaryGap: false
+      },
+      yAxis: {
+        type: 'value',
+        scale: true,
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: labelColor, fontSize: 10, formatter: v => v.toFixed(pair.rate < 1 ? 5 : 2) },
+        splitLine: { lineStyle: { color: gridColor, type: 'dashed' } }
+      },
+      series: [{
+        type: 'line',
+        data: prices,
+        smooth: true,
+        showSymbol: false,
+        lineStyle: { color: accentColor, width: 2 },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: accentColor + '26' },
+            { offset: 1, color: accentColor + '03' }
+          ])
+        },
+        markLine: {
+          silent: true,
+          symbol: 'none',
+          lineStyle: { color: labelColor, type: 'dashed', width: 1 },
+          label: { color: labelColor, fontSize: 10, formatter: p => '前收 ' + p.value.toFixed(pair.rate < 1 ? 5 : 4) },
+          data: [{ yAxis: pair.prevClose }]
+        }
+      }],
+      animation: true,
+      animationDuration: 800,
+      animationEasing: 'cubicOut'
+    });
+  } else {
+    // K-line chart — select data source by period
+    let kData;
+    if (currentPeriod === 'dailyK') {
+      kData = generateKlineData(pair, 60);
+    } else if (currentPeriod === 'weeklyK') {
+      kData = generateLongKlineData(pair, 52, 'week');
+    } else if (currentPeriod === 'monthlyK') {
+      kData = generateLongKlineData(pair, 24, 'month');
+    } else if (currentPeriod === 'quarterlyK') {
+      kData = generateLongKlineData(pair, 16, 'quarter');
+    } else if (currentPeriod === 'yearlyK') {
+      kData = generateLongKlineData(pair, 10, 'year');
+    } else if (currentPeriod === '1min') {
+      kData = generateMinuteKlineData(pair, 120, 1);
+    } else if (currentPeriod === '5min') {
+      kData = generateMinuteKlineData(pair, 48, 5);
+    } else if (currentPeriod === '15min') {
+      kData = generateMinuteKlineData(pair, 48, 15);
+    } else if (currentPeriod === '30min') {
+      kData = generateMinuteKlineData(pair, 48, 30);
+    } else if (currentPeriod === '60min') {
+      kData = generateMinuteKlineData(pair, 40, 60);
+    } else {
+      kData = generateKlineData(pair, 60);
+    }
+
+    const dates = kData.map(d => d.date);
+    const ohlc = kData.map(d => [d.open, d.close, d.low, d.high]);
+    const volumes = kData.map(d => d.volume);
+    const volColors = kData.map(d => d.close >= d.open ? upColor : downColor);
+
+    myChart.setOption({
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'cross' },
+        backgroundColor: tooltipBg,
+        borderColor: tooltipBorder,
+        textStyle: { color: tooltipText, fontSize: 11, fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' },
+      },
+      axisPointer: {
+        link: [{ xAxisIndex: [0, 1] }],
+        crossStyle: { color: labelColor }
+      },
+      grid: [
+        { top: 20, right: 56, bottom: '32%', left: 56 },
+        { height: '15%', right: 56, bottom: 48, left: 56 }
+      ],
+      xAxis: [
+        {
+          type: 'category', data: dates, gridIndex: 0,
+          axisLine: { lineStyle: { color: gridColor } },
+          axisTick: { show: false },
+          axisLabel: { color: labelColor, fontSize: 10, interval: Math.floor(dates.length / 5) },
+          boundaryGap: true,
+          axisPointer: { show: true }
+        },
+        {
+          type: 'category', data: dates, gridIndex: 1,
+          axisLine: { lineStyle: { color: gridColor } },
+          axisTick: { show: false },
+          axisLabel: { show: false },
+          boundaryGap: true
+        }
+      ],
+      yAxis: [
+        {
+          scale: true, gridIndex: 0,
+          axisLine: { show: false },
+          axisTick: { show: false },
+          axisLabel: { color: labelColor, fontSize: 10, formatter: v => v.toFixed(pair.rate < 1 ? 5 : 2) },
+          splitLine: { lineStyle: { color: gridColor, type: 'dashed' } }
+        },
+        {
+          scale: true, gridIndex: 1,
+          axisLine: { show: false },
+          axisTick: { show: false },
+          axisLabel: { show: false },
+          splitLine: { show: false }
+        }
+      ],
+      dataZoom: [
+        { type: 'inside', xAxisIndex: [0, 1], start: 50, end: 100 },
+        { type: 'slider', xAxisIndex: [0, 1], start: 50, end: 100, bottom: 8, height: 20,
+          borderColor: 'transparent', backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+          fillerColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+          handleStyle: { color: accentColor },
+          textStyle: { color: labelColor, fontSize: 10 }
+        }
+      ],
+      series: [
+        {
+          name: 'K线',
+          type: 'candlestick',
+          data: ohlc,
+          xAxisIndex: 0,
+          yAxisIndex: 0,
+          itemStyle: {
+            color: upColor,
+            color0: downColor,
+            borderColor: upColor,
+            borderColor0: downColor
+          }
+        },
+        {
+          name: '成交量',
+          type: 'bar',
+          data: volumes.map((v, i) => ({ value: v, itemStyle: { color: volColors[i] + '40' } })),
+          xAxisIndex: 1,
+          yAxisIndex: 1,
+          barMaxWidth: 8
+        }
+      ],
+      animation: true,
+      animationDuration: 600
+    });
+  }
+}
+
+function renderKeyMetrics() {
+  const pair = PAIRS[currentPair];
+  const el = document.getElementById('keyMetrics');
+  const rd = pair.rate < 1 ? 5 : 4;
+  el.innerHTML = `
+    <div class="key-metric-item">
+      <div class="key-metric-label">今开</div>
+      <div class="key-metric-value">${pair.open.toFixed(rd)}</div>
+    </div>
+    <div class="key-metric-item">
+      <div class="key-metric-label">最高</div>
+      <div class="key-metric-value rate-up">${pair.high.toFixed(rd)}</div>
+    </div>
+    <div class="key-metric-item">
+      <div class="key-metric-label">最低</div>
+      <div class="key-metric-value rate-down">${pair.low.toFixed(rd)}</div>
+    </div>
+    <div class="key-metric-item">
+      <div class="key-metric-label">买入价</div>
+      <div class="key-metric-value">${pair.bid.toFixed(rd)}</div>
+    </div>
+    <div class="key-metric-item">
+      <div class="key-metric-label">卖出价</div>
+      <div class="key-metric-value">${pair.ask.toFixed(rd)}</div>
+    </div>
+    <div class="key-metric-item">
+      <div class="key-metric-label">昨收</div>
+      <div class="key-metric-value">${pair.prevClose.toFixed(rd)}</div>
+    </div>
+  `;
+}
+
+function renderPeriodStats() {
+  const pair = PAIRS[currentPair];
+  const el = document.getElementById('periodStats');
+  const rd = pair.rate < 1 ? 5 : 4;
+  const h7 = (pair.rate * 1.005).toFixed(rd);
+  const l7 = (pair.rate * 0.995).toFixed(rd);
+  const h1y = (pair.rate * 1.035).toFixed(rd);
+  const l1y = (pair.rate * 0.965).toFixed(rd);
+  const hAll = (pair.rate * 1.082).toFixed(rd);
+  const lAll = (pair.rate * 0.918).toFixed(rd);
+  el.innerHTML = `
+    <div class="period-stats-title">周期统计</div>
+    <div class="summary-grid-period">
+      <div class="summary-item-dual">
+        <div class="summary-item-dual-title">7日区间</div>
+        <div class="summary-item-dual-row">
+          <div class="summary-item-dual-cell">
+            <div class="summary-item-dual-cell-label">最高</div>
+            <div class="summary-item-dual-cell-value rate-up">${h7}</div>
+          </div>
+          <div class="summary-item-dual-divider"></div>
+          <div class="summary-item-dual-cell">
+            <div class="summary-item-dual-cell-label">最低</div>
+            <div class="summary-item-dual-cell-value rate-down">${l7}</div>
+          </div>
+        </div>
+      </div>
+      <div class="summary-item-dual">
+        <div class="summary-item-dual-title">1年区间</div>
+        <div class="summary-item-dual-row">
+          <div class="summary-item-dual-cell">
+            <div class="summary-item-dual-cell-label">最高</div>
+            <div class="summary-item-dual-cell-value rate-up">${h1y}</div>
+          </div>
+          <div class="summary-item-dual-divider"></div>
+          <div class="summary-item-dual-cell">
+            <div class="summary-item-dual-cell-label">最低</div>
+            <div class="summary-item-dual-cell-value rate-down">${l1y}</div>
+          </div>
+        </div>
+      </div>
+      <div class="summary-item-dual">
+        <div class="summary-item-dual-title">历史区间</div>
+        <div class="summary-item-dual-row">
+          <div class="summary-item-dual-cell">
+            <div class="summary-item-dual-cell-label">最高</div>
+            <div class="summary-item-dual-cell-value rate-up">${hAll}</div>
+          </div>
+          <div class="summary-item-dual-divider"></div>
+          <div class="summary-item-dual-cell">
+            <div class="summary-item-dual-cell-label">最低</div>
+            <div class="summary-item-dual-cell-value rate-down">${lAll}</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function notificationRuleSummary(rule) {
+  const price = rule.comparison === 'none' ? '' : `汇率${rule.comparison === 'below' ? '低于' : '高于'} ${rule.value}`;
+  if (rule.type === 'price') return `${price} 时提醒（严格${rule.comparison === 'below' ? '小于' : '大于'}，等于不提醒）`;
+  return `触及或跌破${notificationPeriods[rule.period].label}${price ? `，且${price}` : ''}时提醒`;
+}
+
+function updateNotificationStatus() {
+  const rules = [...notificationPairs].flatMap(pair => notificationRules.get(pair) || []);
+  const active = rules.filter(rule => rule.enabled).length;
+  const enabled = document.getElementById('notificationToggle').checked;
+  const hint = !enabled ? '桌面通知已暂停，所有订阅和条件已保留。'
+    : notificationPairs.size === 0 ? '请选择币种，再添加通知条件。'
+    : active === 0 ? '暂无启用条件，不会提醒。' : '各条独立判断，任意一条满足即可提醒。';
+  document.getElementById('notificationSubscriptionStatus').textContent =
+    `已选择 ${notificationPairs.size} 个币种 · ${rules.length} 条条件 · ${active} 条已启用。${hint}`;
+}
+
+function renderNotificationCards() {
+  const container = document.getElementById('notificationCards');
+  const desktopEnabled = document.getElementById('notificationToggle').checked;
+  container.replaceChildren();
+  if (notificationPairs.size === 0) {
+    container.innerHTML = '<div class="subscription-empty">尚未订阅币种<br>选择上方币种，为它添加当天最低、历史最低或指定价格等条件。</div>';
+  }
+  for (const pair of ALL_PAIRS.filter(pair => notificationPairs.has(pair.code))) {
+    const rules = notificationRules.get(pair.code) || [];
+    const [base, quote] = pair.name.split('/');
+    const card = document.createElement('article');
+    card.className = 'subscription-card';
+    card.dataset.pair = pair.code;
+    card.setAttribute('aria-label', `${pair.name}通知条件`);
+    card.innerHTML = `<header class="subscription-card-header">
+      <div><h3 class="subscription-card-title">${pair.name}</h3><div class="subscription-unit">${pair.code} · 1 ${base} = X ${quote}</div></div>
+      <span class="subscription-count">${rules.length} 条条件 · ${rules.filter(rule => rule.enabled).length} 条已启用</span>
+    </header>`;
+    if (rules.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'subscription-empty';
+      empty.textContent = '暂未添加通知条件，不会提醒。可添加多条，每条独立生效。';
+      card.append(empty);
+    }
+    for (const rule of rules) {
+      const row = document.createElement('div');
+      row.className = 'subscription-rule';
+      row.dataset.ruleId = rule.id;
+      row.innerHTML = `<div class="subscription-rule-info">
+        <div class="subscription-rule-title"></div><div class="subscription-rule-summary"></div><div class="subscription-rule-state"></div>
+      </div><div class="subscription-actions">
+        <button type="button" class="subscription-button" data-action="edit">编辑</button>
+        <button type="button" class="subscription-button" data-action="toggle"></button>
+        <button type="button" class="subscription-button danger" data-action="delete">删除</button>
+      </div>`;
+      const title = rule.type === 'low' ? notificationPeriods[rule.period].label : `指定价格 · ${rule.comparison === 'below' ? '低于' : '高于'} ${rule.value}`;
+      row.querySelector('.subscription-rule-title').textContent = title;
+      row.querySelector('.subscription-rule-summary').textContent = notificationRuleSummary(rule);
+      const state = row.querySelector('.subscription-rule-state');
+      state.textContent = !rule.enabled ? '条件已暂停' : !desktopEnabled ? '提醒已暂停 · 桌面通知总开关已关闭' : '已启用';
+      state.classList.toggle('paused', !rule.enabled || !desktopEnabled);
+      const toggle = row.querySelector('[data-action="toggle"]');
+      toggle.textContent = rule.enabled ? '暂停' : '启用';
+      for (const button of row.querySelectorAll('button')) {
+        button.setAttribute('aria-label', `${button.textContent}${pair.name}的${title}条件`);
+      }
+      row.querySelector('[data-action="edit"]').addEventListener('click', () => openNotificationEditor(pair.code, rule.id));
+      toggle.addEventListener('click', () => {
+        rule.enabled = !rule.enabled;
+        renderNotificationCards();
+        document.querySelector(`[data-rule-id="${rule.id}"] [data-action="toggle"]`).focus();
+      });
+      row.querySelector('[data-action="delete"]').addEventListener('click', () => {
+        notificationRules.set(pair.code, rules.filter(item => item.id !== rule.id));
+        renderNotificationCards();
+        document.querySelector(`.subscription-card[data-pair="${pair.code}"] .subscription-add`).focus();
+      });
+      card.append(row);
+    }
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'subscription-button subscription-add';
+    add.textContent = '+ 添加通知条件';
+    add.setAttribute('aria-label', `为${pair.name}添加通知条件`);
+    add.addEventListener('click', () => openNotificationEditor(pair.code));
+    card.append(add);
+    container.append(card);
+  }
+  updateNotificationStatus();
+}
+
+function readNotificationEditor() {
+  const type = document.getElementById('notificationConditionType').value;
+  const comparison = document.getElementById('notificationConditionComparison').value;
+  const input = document.getElementById('notificationConditionValue');
+  const needsValue = comparison !== 'none';
+  const value = needsValue ? input.valueAsNumber : null;
+  const valid = !needsValue || (Number.isFinite(value) && value > 0);
+  return {
+    valid,
+    rule: { type, period: type === 'low' ? document.getElementById('notificationConditionPeriod').value : null, comparison, value },
+  };
+}
+
+function updateNotificationEditor() {
+  const isLow = document.getElementById('notificationConditionType').value === 'low';
+  const comparison = document.getElementById('notificationConditionComparison');
+  comparison.options[0].hidden = !isLow;
+  comparison.options[0].disabled = !isLow;
+  if (!isLow && comparison.value === 'none') comparison.value = 'below';
+  comparison.options[1].textContent = isLow ? '同时低于指定值' : '低于指定值';
+  comparison.options[2].textContent = isLow ? '同时高于指定值' : '高于指定值';
+  document.getElementById('notificationPeriodField').hidden = !isLow;
+  document.getElementById('notificationComparisonLabel').textContent = isLow ? '附加价格限制' : '提醒方向';
+  document.getElementById('notificationPeriodHint').textContent = notificationPeriods[document.getElementById('notificationConditionPeriod').value].hint;
+  document.getElementById('notificationValueField').hidden = comparison.value === 'none';
+  const { valid, rule } = readNotificationEditor();
+  document.getElementById('notificationConditionValue').setAttribute('aria-invalid', String(!valid));
+  document.getElementById('notificationValueError').textContent = valid ? '' : '请输入大于 0 的有效汇率。';
+  document.getElementById('notificationRuleSave').disabled = !valid;
+  document.getElementById('notificationConditionPreview').textContent = valid
+    ? `${notificationRuleSummary(rule)}。本条独立生效，不要求其他条件同时满足。`
+    : '条件尚未完成：填写有效阈值后才可保存，不影响已保存的其他条件。';
+}
+
+function openNotificationEditor(pairCode, ruleId = null) {
+  const pair = ALL_PAIRS.find(pair => pair.code === pairCode);
+  const rule = ruleId === null ? { type: 'low', period: 'day', comparison: 'none', value: null }
+    : notificationRules.get(pairCode).find(rule => rule.id === ruleId);
+  notificationEditor = { pairCode, ruleId };
+  document.getElementById('notificationRuleDialogTitle').textContent = ruleId === null ? '添加通知条件' : '编辑通知条件';
+  document.getElementById('notificationRuleDialogIntro').textContent = `${pair.name} · ${ruleId === null ? '新增一条独立条件，不会覆盖已有条件。' : '仅修改当前条件，其他条件保持不变。'}`;
+  document.getElementById('notificationConditionType').value = rule.type;
+  document.getElementById('notificationConditionPeriod').value = rule.period || 'day';
+  document.getElementById('notificationConditionComparison').value = rule.comparison;
+  document.getElementById('notificationConditionValue').value = rule.value ?? '';
+  const [base, quote] = pair.name.split('/');
+  document.getElementById('notificationValueUnit').textContent = `1 ${base} = 输入的汇率值 ${quote}；仅作用于本条条件。`;
+  updateNotificationEditor();
+  document.getElementById('notificationRuleDialog').showModal();
+  document.getElementById('notificationConditionType').focus();
+}
+
+function renderNotificationSubscriptions() {
+  const el = document.getElementById('notificationPairChips');
+  el.innerHTML = ALL_PAIRS.map(pair => `<button type="button" class="pair-chip" data-pair="${pair.code}" aria-pressed="false">
+    <span class="pair-chip-check" aria-hidden="true"></span>
+    <span>${pair.name}</span>
+  </button>`).join('');
+  el.querySelectorAll('button').forEach(button => {
+    const sync = () => {
+      const checked = notificationPairs.has(button.dataset.pair);
+      button.classList.toggle('checked', checked);
+      button.setAttribute('aria-pressed', String(checked));
+      button.querySelector('.pair-chip-check').textContent = checked ? '✓' : '';
+    };
+    sync();
+    button.addEventListener('click', () => {
+      const pair = button.dataset.pair;
+      if (notificationPairs.has(pair)) notificationPairs.delete(pair);
+      else notificationPairs.add(pair);
+      sync();
+      renderNotificationCards();
+    });
+  });
+  document.getElementById('notificationToggle').addEventListener('change', renderNotificationCards);
+  for (const id of ['notificationConditionType', 'notificationConditionPeriod', 'notificationConditionComparison']) {
+    document.getElementById(id).addEventListener('change', updateNotificationEditor);
+  }
+  document.getElementById('notificationConditionValue').addEventListener('input', updateNotificationEditor);
+  const dialog = document.getElementById('notificationRuleDialog');
+  document.getElementById('notificationRuleCancel').addEventListener('click', () => dialog.close());
+  dialog.addEventListener('close', () => { notificationEditor = null; });
+  document.getElementById('notificationRuleForm').addEventListener('submit', event => {
+    event.preventDefault();
+    const { valid, rule } = readNotificationEditor();
+    if (!valid) {
+      updateNotificationEditor();
+      return;
+    }
+    const { pairCode, ruleId } = notificationEditor;
+    const rules = notificationRules.get(pairCode) || [];
+    const id = ruleId ?? nextNotificationRuleId++;
+    if (ruleId === null) {
+      notificationRules.set(pairCode, [...rules, { ...rule, id, enabled: true }]);
+    } else {
+      notificationRules.set(pairCode, rules.map(item => item.id === id ? { ...item, ...rule } : item));
+    }
+    dialog.close();
+    renderNotificationCards();
+    document.querySelector(`[data-rule-id="${id}"] [data-action="edit"]`).focus();
+  });
+  renderNotificationCards();
+}
+
+function renderPairChips() {
+  const el = document.getElementById('pairChips');
+  el.innerHTML = PAIRS.map((pair, i) => {
+    return `<div class="pair-chip checked" data-index="${i}">
+      <span class="pair-chip-check">✓</span>
+      <span>${pair.flag} ${pair.name}</span>
+    </div>`;
+  }).join('');
+
+  el.querySelectorAll('.pair-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const checked = el.querySelectorAll('.pair-chip.checked');
+      if (chip.classList.contains('checked') && checked.length <= 1) return;
+      chip.classList.toggle('checked');
+      if (!chip.classList.contains('checked')) {
+        chip.querySelector('.pair-chip-check').textContent = '';
+      } else {
+        chip.querySelector('.pair-chip-check').textContent = '✓';
+      }
+    });
+  });
+}
+
+// ============================================
+// Stock Render Functions
+// ============================================
+
+function formatVolume(v) {
+  if (v >= 1e8) return (v / 1e8).toFixed(2) + '亿';
+  if (v >= 1e4) return (v / 1e4).toFixed(0) + '万';
+  return v.toString();
+}
+
+function formatMarketCap(v) {
+  if (v >= 10000) return (v / 10000).toFixed(1) + '万亿';
+  return v.toFixed(0) + '亿';
+}
+
+function renderStockIndices(targetId) {
+  const el = document.getElementById(targetId || 'stockMarketIndices');
+  if (!el) return;
+  el.innerHTML = HK_INDICES.map(idx => {
+    const isUp = idx.change > 0;
+    const cls = isUp ? 'rate-up' : 'rate-down';
+    const sign = isUp ? '+' : '';
+    return `<div class="index-card">
+      <div class="index-card-label">${idx.name}</div>
+      <div class="index-card-value">${idx.value}</div>
+      <div class="index-card-change ${cls}">${sign}${idx.change.toFixed(2)} (${sign}${idx.changePct.toFixed(2)}%)</div>
+    </div>`;
+  }).join('');
+}
+
+function renderStockGrid(targetId, fromOverview) {
+  const el = document.getElementById(targetId || 'stockGrid');
+  if (!el) return;
+  el.innerHTML = STOCKS.map((s, i) => {
+    const isUp = s.change > 0;
+    const cls = isUp ? 'rate-up' : s.change < 0 ? 'rate-down' : 'rate-flat';
+    const sign = isUp ? '+' : '';
+    return `<div class="stock-card" data-index="${i}" role="button" tabindex="0">
+      <div class="stock-card-top">
+        <span class="stock-card-name">${s.name}</span>
+        <span class="stock-card-code">${s.code}</span>
+      </div>
+      <div class="stock-card-bottom">
+        <span class="stock-card-price ${cls}">${s.price.toFixed(2)}</span>
+        <div class="stock-card-change ${cls}">
+          <div>${sign}${s.change.toFixed(2)}</div>
+          <div>${sign}${s.changePct.toFixed(2)}%</div>
+        </div>
+      </div>
+      <div class="stock-card-meta">
+        <span>量 ${formatVolume(s.volume)}</span>
+        <span>额 ${s.turnover.toFixed(1)}亿</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.querySelectorAll('.stock-card').forEach(card => {
+    card.addEventListener('click', () => {
+      currentStock = parseInt(card.dataset.index);
+      if (fromOverview) {
+        switchView('stock');
+      } else {
+        showStockDetail();
+      }
+    });
+  });
+}
+
+function renderStockSidebar() {
+  const el = document.getElementById('stockSidebarList');
+  el.innerHTML = STOCKS.map((s, i) => {
+    const isUp = s.change > 0;
+    const cls = isUp ? 'rate-up' : s.change < 0 ? 'rate-down' : 'rate-flat';
+    const sign = isUp ? '+' : '';
+    return `<div class="sidebar-item ${i === currentStock ? 'active' : ''}" data-index="${i}"${isStockEditing ? ' draggable="true"' : ''} role="button" tabindex="0">
+      <span class="sidebar-item-drag" title="拖动排序">⠿</span>
+      <div class="sidebar-item-flag" style="font-size:11px;font-weight:700;background:var(--bg-surface-secondary);">${s.code.slice(-2)}</div>
+      <div class="sidebar-item-info">
+        <div class="sidebar-item-name">${s.name}</div>
+        <div class="sidebar-item-rate">${s.price.toFixed(2)}</div>
+      </div>
+      <div class="sidebar-item-change ${cls}">${sign}${s.changePct.toFixed(2)}%</div>
+      <button class="sidebar-item-remove" data-remove="${i}" title="移除">✕</button>
+    </div>`;
+  }).join('');
+
+  el.querySelectorAll('.sidebar-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      if (e.target.closest('.sidebar-item-remove')) return;
+      if (isStockEditing) return;
+      currentStock = parseInt(item.dataset.index);
+      renderStockSidebar();
+      renderStockHeader();
+      renderStockKeyMetrics();
+      renderStockChart();
+      renderOrderBook();
+      renderStockInfo();
+    });
+  });
+
+  el.querySelectorAll('.sidebar-item-remove').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeStock(parseInt(btn.dataset.remove));
+    });
+  });
+
+  if (!isStockEditing) return;
+
+  let dragSrcIndex = null;
+  const items = el.querySelectorAll('.sidebar-item');
+  items.forEach(item => {
+    item.addEventListener('dragstart', (e) => {
+      dragSrcIndex = parseInt(item.dataset.index);
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    item.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      const rect = item.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      item.classList.remove('drag-over-top', 'drag-over-bottom');
+      item.classList.add(e.clientY < midY ? 'drag-over-top' : 'drag-over-bottom');
+    });
+    item.addEventListener('dragleave', () => item.classList.remove('drag-over-top', 'drag-over-bottom'));
+    item.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const fromIndex = dragSrcIndex;
+      const toIndex = parseInt(item.dataset.index);
+      if (fromIndex === null || fromIndex === toIndex) return;
+      const rect = item.getBoundingClientRect();
+      const insertBefore = e.clientY < rect.top + rect.height / 2;
+      let insertAt = insertBefore ? toIndex : toIndex + 1;
+      if (fromIndex < insertAt) insertAt--;
+      if (fromIndex !== insertAt) {
+        const [moved] = STOCKS.splice(fromIndex, 1);
+        STOCKS.splice(insertAt, 0, moved);
+        if (currentStock === fromIndex) currentStock = insertAt;
+        else if (fromIndex < currentStock && insertAt >= currentStock) currentStock--;
+        else if (fromIndex > currentStock && insertAt <= currentStock) currentStock++;
+      }
+      renderStockSidebar();
+    });
+    item.addEventListener('dragend', () => {
+      items.forEach(it => it.classList.remove('dragging', 'drag-over-top', 'drag-over-bottom'));
+      dragSrcIndex = null;
+    });
+  });
+}
+
+function setStockEditMode(editing) {
+  isStockEditing = editing;
+  const sidebar = document.querySelector('.stock-sidebar');
+  const editBtn = document.getElementById('stockSidebarEditBtn');
+  const editLabel = document.getElementById('stockSidebarEditLabel');
+  const addBtn = document.getElementById('stockSidebarAddBtn');
+  if (sidebar) sidebar.classList.toggle('editing', isStockEditing);
+  if (editBtn) { editBtn.textContent = isStockEditing ? '完成' : '编辑'; editBtn.classList.toggle('done', isStockEditing); }
+  if (editLabel) editLabel.textContent = isStockEditing ? '拖动排序 · 点击 ✕ 移除' : '';
+  if (addBtn) addBtn.style.display = isStockEditing ? 'none' : '';
+  renderStockSidebar();
+}
+
+function removeStock(index) {
+  if (STOCKS.length <= 1) return;
+  STOCKS.splice(index, 1);
+  if (currentStock >= STOCKS.length) currentStock = STOCKS.length - 1;
+  else if (currentStock > index) currentStock--;
+  else if (currentStock === index) currentStock = Math.min(index, STOCKS.length - 1);
+  renderStockSidebar();
+  renderStockHeader();
+  renderStockKeyMetrics();
+  renderStockChart();
+  renderOrderBook();
+  renderStockInfo();
+}
+
+function addStock(code) {
+  const existing = ALL_STOCKS.find(s => s.code === code);
+  if (!existing || STOCKS.find(s => s.code === code)) return;
+  STOCKS.push({ ...existing });
+  renderStockSidebar();
+}
+
+function renderStockAddPanel(filter) {
+  const el = document.getElementById('stockAddPanelList');
+  const q = (filter || '').toLowerCase();
+  const activeCodes = new Set(STOCKS.map(s => s.code));
+  const available = ALL_STOCKS.filter(s =>
+    !activeCodes.has(s.code) &&
+    (s.name.toLowerCase().includes(q) || s.code.includes(q))
+  );
+  if (!available.length) {
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-tertiary);font-size:13px;">没有更多可添加的股票</div>';
+    return;
+  }
+  el.innerHTML = available.map(s => `<div class="add-panel-item" data-code="${s.code}">
+    <div class="add-panel-item-flag" style="font-size:11px;font-weight:700;">${s.code.slice(-2)}</div>
+    <div class="add-panel-item-info">
+      <div class="add-panel-item-name">${s.name}</div>
+      <div class="add-panel-item-code">${s.code}.HK</div>
+    </div>
+    <span class="add-panel-item-add">+</span>
+  </div>`).join('');
+
+  el.querySelectorAll('.add-panel-item').forEach(item => {
+    item.addEventListener('click', () => {
+      addStock(item.dataset.code);
+      renderStockAddPanel(document.getElementById('stockAddPanelSearch').value);
+    });
+  });
+}
+
+function renderStockHeader() {
+  const s = STOCKS[currentStock];
+  const isUp = s.change > 0;
+  const cls = isUp ? 'up' : s.change < 0 ? 'down' : 'flat';
+  const sign = isUp ? '+' : '';
+  const now = new Date();
+  const hour = now.getHours();
+  const isTrading = hour >= 9 && hour < 16;
+  document.getElementById('stockHeader').innerHTML = `
+    <div class="stock-header-left">
+      <div class="stock-header-name">${s.name}</div>
+      <div class="stock-header-code">${s.code}.HK</div>
+      <div class="stock-header-price ${cls === 'up' ? 'rate-up' : cls === 'down' ? 'rate-down' : ''}">${s.price.toFixed(2)}</div>
+      <div class="stock-header-change-row">
+        <span class="stock-header-badge ${cls}">${sign}${s.change.toFixed(2)} (${sign}${s.changePct.toFixed(2)}%)</span>
+      </div>
+    </div>
+    <div class="stock-header-right">
+      <div class="stock-header-time">${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}</div>
+      <div class="stock-header-status ${isTrading ? 'trading' : 'closed'}">
+        <span class="refresh-dot" style="width:5px;height:5px;"></span>
+        ${isTrading ? '交易中' : '已休市'}
+      </div>
+    </div>`;
+}
+
+function renderStockKeyMetrics() {
+  const s = STOCKS[currentStock];
+  document.getElementById('stockKeyMetrics').innerHTML = `
+    <div class="key-metric-item"><div class="key-metric-label">今开</div><div class="key-metric-value">${s.open.toFixed(2)}</div></div>
+    <div class="key-metric-item"><div class="key-metric-label">最高</div><div class="key-metric-value rate-up">${s.high.toFixed(2)}</div></div>
+    <div class="key-metric-item"><div class="key-metric-label">最低</div><div class="key-metric-value rate-down">${s.low.toFixed(2)}</div></div>
+    <div class="key-metric-item"><div class="key-metric-label">昨收</div><div class="key-metric-value">${s.prevClose.toFixed(2)}</div></div>
+    <div class="key-metric-item"><div class="key-metric-label">成交量</div><div class="key-metric-value">${formatVolume(s.volume)}</div></div>
+    <div class="key-metric-item"><div class="key-metric-label">成交额</div><div class="key-metric-value">${s.turnover.toFixed(1)}亿</div></div>`;
+}
+
+function generateOrderBook(stock) {
+  const asks = [], bids = [];
+  let askP = stock.price + 0.05;
+  let bidP = stock.price - 0.05;
+  for (let i = 0; i < 5; i++) {
+    asks.push({ level: '卖' + (i + 1), price: parseFloat(askP.toFixed(2)), volume: Math.floor(1000 + Math.random() * 50000) });
+    bids.push({ level: '买' + (i + 1), price: parseFloat(bidP.toFixed(2)), volume: Math.floor(1000 + Math.random() * 50000) });
+    askP += parseFloat((0.05 + Math.random() * 0.15).toFixed(2));
+    bidP -= parseFloat((0.05 + Math.random() * 0.15).toFixed(2));
+  }
+  return { asks: asks.reverse(), bids };
+}
+
+function renderOrderBook() {
+  const s = STOCKS[currentStock];
+  const ob = generateOrderBook(s);
+  const spread = (ob.asks[ob.asks.length - 1].price - ob.bids[0].price).toFixed(2);
+  document.getElementById('orderBook').innerHTML = `
+    <div class="order-book-title">五档盘口</div>
+    <table class="order-book-table">
+      <thead><tr><th>档位</th><th>价格</th><th>数量</th></tr></thead>
+      <tbody>
+        ${ob.asks.map(a => `<tr class="ask-row"><td>${a.level}</td><td>${a.price.toFixed(2)}</td><td>${formatVolume(a.volume)}</td></tr>`).join('')}
+      </tbody>
+    </table>
+    <div class="order-book-spread">价差 ${spread} · ${((spread / s.price) * 100).toFixed(3)}%</div>
+    <table class="order-book-table">
+      <tbody>
+        ${ob.bids.map(b => `<tr class="bid-row"><td>${b.level}</td><td>${b.price.toFixed(2)}</td><td>${formatVolume(b.volume)}</td></tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+function renderStockInfo() {
+  const s = STOCKS[currentStock];
+  document.getElementById('stockInfoPanel').innerHTML = `
+    <div class="stock-info-title">股票信息</div>
+    <div class="stock-info-grid">
+      <div class="stock-info-item"><span class="stock-info-label">市盈率 PE</span><span class="stock-info-value">${s.pe.toFixed(1)}</span></div>
+      <div class="stock-info-item"><span class="stock-info-label">市净率 PB</span><span class="stock-info-value">${s.pb.toFixed(1)}</span></div>
+      <div class="stock-info-item"><span class="stock-info-label">总市值</span><span class="stock-info-value">${formatMarketCap(s.marketCap)}</span></div>
+      <div class="stock-info-item"><span class="stock-info-label">换手率</span><span class="stock-info-value">${(Math.random() * 3 + 0.5).toFixed(2)}%</span></div>
+      <div class="stock-info-item"><span class="stock-info-label">52周最高</span><span class="stock-info-value rate-up">${s.high52w.toFixed(2)}</span></div>
+      <div class="stock-info-item"><span class="stock-info-label">52周最低</span><span class="stock-info-value rate-down">${s.low52w.toFixed(2)}</span></div>
+      <div class="stock-info-item"><span class="stock-info-label">振幅</span><span class="stock-info-value">${((s.high - s.low) / s.prevClose * 100).toFixed(2)}%</span></div>
+      <div class="stock-info-item"><span class="stock-info-label">量比</span><span class="stock-info-value">${(0.8 + Math.random() * 0.8).toFixed(2)}</span></div>
+    </div>`;
+}
+
+function renderStockChart() {
+  const s = STOCKS[currentStock];
+  const chartDom = document.getElementById('stockChartArea');
+  if (myStockChart) myStockChart.dispose();
+  myStockChart = echarts.init(chartDom);
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const labelColor = isDark ? '#98989d' : '#86868b';
+  const accentColor = isDark ? '#2997ff' : '#0071e3';
+  const tooltipBg = isDark ? 'rgba(58,58,60,0.95)' : 'rgba(255,255,255,0.95)';
+  const tooltipBorder = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
+  const tooltipText = isDark ? '#f5f5f7' : '#1d1d1f';
+
+  // Intraday data
+  const data = [];
+  let price = s.open;
+  const now = new Date();
+  for (let i = 0; i < 240; i++) {
+    const t = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, i);
+    price += (Math.random() - 0.498) * 0.003 * price;
+    data.push({
+      time: t.getHours().toString().padStart(2,'0') + ':' + t.getMinutes().toString().padStart(2,'0'),
+      price: parseFloat(price.toFixed(2))
+    });
+  }
+  const times = data.map(d => d.time);
+  const prices = data.map(d => d.price);
+
+  myStockChart.setOption({
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: tooltipBg,
+      borderColor: tooltipBorder,
+      textStyle: { color: tooltipText, fontSize: 12 },
+      formatter: function(params) {
+        const p = params[0];
+        return `<div style="font-weight:600;margin-bottom:4px">${p.name}</div><div style="font-size:16px;font-weight:700">${p.value.toFixed(2)}</div>`;
+      }
+    },
+    grid: { top: 20, right: 16, bottom: 32, left: 56 },
+    xAxis: {
+      type: 'category', data: times,
+      axisLine: { lineStyle: { color: gridColor } },
+      axisTick: { show: false },
+      axisLabel: { color: labelColor, fontSize: 10, interval: Math.floor(times.length / 6) },
+      boundaryGap: false
+    },
+    yAxis: {
+      type: 'value', scale: true,
+      axisLine: { show: false }, axisTick: { show: false },
+      axisLabel: { color: labelColor, fontSize: 10, formatter: v => v.toFixed(2) },
+      splitLine: { lineStyle: { color: gridColor, type: 'dashed' } }
+    },
+    series: [{
+      type: 'line', data: prices, smooth: true, showSymbol: false,
+      lineStyle: { color: accentColor, width: 2 },
+      areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:accentColor+'26'},{offset:1,color:accentColor+'03'}]) },
+      markLine: {
+        silent: true, symbol: 'none',
+        lineStyle: { color: labelColor, type: 'dashed', width: 1 },
+        label: { color: labelColor, fontSize: 10, formatter: p => '前收 ' + p.value.toFixed(2) },
+        data: [{ yAxis: s.prevClose }]
+      }
+    }],
+    animation: true, animationDuration: 800
+  });
+}
+
+function showStockDetail() {
+  renderStockSidebar();
+  renderStockHeader();
+  renderStockKeyMetrics();
+  setTimeout(() => renderStockChart(), 50);
+  renderOrderBook();
+  renderStockInfo();
+}
+
+// ============================================
+// View switching
+// ============================================
+function switchView(view) {
+  currentView = view;
+  document.querySelectorAll('.nav-pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.view === view);
+    p.setAttribute('aria-selected', p.dataset.view === view ? 'true' : 'false');
+  });
+  document.querySelectorAll('.view').forEach(v => {
+    v.classList.toggle('active', v.id === 'view-' + view);
+  });
+
+  if (view !== 'detail' && isEditing) {
+    setEditMode(false);
+  }
+  if (view !== 'stock' && isStockEditing) {
+    setStockEditMode(false);
+  }
+
+  if (view === 'detail') {
+    renderSidebar();
+    renderDetailHeader();
+    setTimeout(() => { renderChart(); }, 50);
+    renderKeyMetrics();
+    renderPeriodStats();
+  }
+  if (view === 'overview') {
+    renderPairGrid();
+    renderStockIndices('overviewStockIndices');
+    renderStockGrid('overviewStockGrid', true);
+  }
+  if (view === 'stock') {
+    showStockDetail();
+  }
+}
+
+// ============================================
+// Platform
+// ============================================
+function detectPlatform() {
+  const ua = navigator.userAgent.toLowerCase();
+  if (ua.includes('win')) return 'windows';
+  if (ua.includes('linux')) return 'linux';
+  return 'macos';
+}
+
+function setPlatform(platform) {
+  document.documentElement.setAttribute('data-platform', platform);
+  if (currentView === 'detail') {
+    setTimeout(() => { if (myChart) myChart.resize(); }, 50);
+  }
+  if (currentView === 'stock') {
+    setTimeout(() => { if (myStockChart) myStockChart.resize(); }, 50);
+  }
+}
+
+// ============================================
+// Theme
+// ============================================
+function setTheme(theme) {
+  let actualTheme = theme;
+  if (theme === 'system') {
+    actualTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  document.documentElement.setAttribute('data-theme', actualTheme);
+  document.getElementById('themeIcon').textContent = actualTheme === 'dark' ? '☀️' : '🌙';
+
+  // Update settings page options
+  document.querySelectorAll('.theme-option').forEach(opt => {
+    opt.classList.toggle('active', opt.dataset.theme === theme);
+  });
+
+  // Re-render chart if on detail view
+  if (currentView === 'detail') {
+    setTimeout(() => renderChart(), 50);
+  }
+  if (currentView === 'stock') {
+    setTimeout(() => renderStockChart(), 50);
+  }
+}
+
+// ============================================
+// Countdown
+// ============================================
+function startCountdown() {
+  countdownValue = 30;
+  setInterval(() => {
+    countdownValue--;
+    if (countdownValue <= 0) countdownValue = 30;
+    const el1 = document.getElementById('countdown');
+    const el2 = document.getElementById('sidebarCountdown');
+    if (el1) el1.textContent = countdownValue + 's';
+    if (el2) el2.textContent = countdownValue + 's';
+  }, 1000);
+}
+
+// ============================================
+// Event bindings
+// ============================================
+function init() {
+  // Navigation
+  document.querySelectorAll('.nav-pill').forEach(pill => {
+    pill.addEventListener('click', () => switchView(pill.dataset.view));
+  });
+
+  // Theme toggle (title bar)
+  document.getElementById('themeToggle').addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme');
+    setTheme(current === 'dark' ? 'light' : 'dark');
+    // Sync settings page theme options
+    const active = document.documentElement.getAttribute('data-theme');
+    document.querySelectorAll('.theme-option').forEach(opt => {
+      opt.classList.toggle('active', opt.dataset.theme === active);
+    });
+  });
+
+  // Theme options (settings page)
+  document.querySelectorAll('.theme-option').forEach(opt => {
+    opt.addEventListener('click', () => setTheme(opt.dataset.theme));
+  });
+
+  // Period selector
+  const periodMoreWrap = document.getElementById('periodMoreWrap');
+  const periodMoreBtn = document.getElementById('periodMoreBtn');
+
+  // Main period buttons (excluding "more" trigger)
+  document.querySelectorAll('.period-btn:not(.period-more-btn)').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.period-dropdown-item').forEach(d => d.classList.remove('active'));
+      btn.classList.add('active');
+      currentPeriod = btn.dataset.period;
+      if (periodMoreWrap) periodMoreWrap.classList.remove('open');
+      renderChart();
+    });
+  });
+
+  // "More" dropdown toggle
+  if (periodMoreBtn) {
+    periodMoreBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      periodMoreWrap.classList.toggle('open');
+    });
+  }
+
+  // Dropdown items
+  document.querySelectorAll('.period-dropdown-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.period-dropdown-item').forEach(d => d.classList.remove('active'));
+      item.classList.add('active');
+      periodMoreBtn.classList.add('active');
+      periodMoreBtn.innerHTML = item.textContent + '<span class="chevron">▾</span>';
+      currentPeriod = item.dataset.period;
+      periodMoreWrap.classList.remove('open');
+      renderChart();
+    });
+  });
+
+  // Close dropdown on outside click
+  document.addEventListener('click', () => {
+    if (periodMoreWrap) periodMoreWrap.classList.remove('open');
+  });
+
+  // Sidebar search
+  document.getElementById('sidebarSearch').addEventListener('input', (e) => {
+    const q = e.target.value.toLowerCase();
+    document.querySelectorAll('.sidebar-item').forEach(item => {
+      const idx = parseInt(item.dataset.index);
+      const pair = PAIRS[idx];
+      const match = pair.name.toLowerCase().includes(q) || pair.code.toLowerCase().includes(q);
+      item.style.display = match ? '' : 'none';
+    });
+  });
+
+  // Sidebar edit mode toggle
+  document.getElementById('sidebarEditBtn').addEventListener('click', () => {
+    setEditMode(!isEditing);
+  });
+
+  // Add currency panel
+  const addPanelOverlay = document.getElementById('addPanelOverlay');
+  const addPanelSearch = document.getElementById('addPanelSearch');
+  document.getElementById('sidebarAddBtn').addEventListener('click', () => {
+    addPanelOverlay.classList.add('open');
+    addPanelSearch.value = '';
+    renderAddPanel('');
+    setTimeout(() => addPanelSearch.focus(), 100);
+  });
+  document.getElementById('addPanelClose').addEventListener('click', () => {
+    addPanelOverlay.classList.remove('open');
+  });
+  addPanelOverlay.addEventListener('click', (e) => {
+    if (e.target === addPanelOverlay) addPanelOverlay.classList.remove('open');
+  });
+  addPanelSearch.addEventListener('input', (e) => {
+    renderAddPanel(e.target.value);
+  });
+
+  // Slider
+  const slider = document.getElementById('refreshSlider');
+  if (slider) {
+    slider.addEventListener('input', (e) => {
+      const val = e.target.value;
+      slider.previousElementSibling && (document.querySelector('.slider-value').innerHTML = val + '<span class="slider-unit">秒</span>');
+      document.querySelectorAll('.slider-preset').forEach(p => {
+        p.classList.toggle('active', p.dataset.val === val);
+      });
+    });
+  }
+
+  // Slider presets
+  document.querySelectorAll('.slider-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = btn.dataset.val;
+      document.getElementById('refreshSlider').value = val;
+      document.querySelector('.slider-value').innerHTML = val + '<span class="slider-unit">秒</span>';
+      document.querySelectorAll('.slider-preset').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  // Language options
+  document.querySelectorAll('.lang-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      document.querySelectorAll('.lang-option').forEach(o => o.classList.remove('active'));
+      opt.classList.add('active');
+    });
+  });
+
+  // ==========================================
+  // Stock event bindings
+  // ==========================================
+
+  // Stock sidebar edit mode toggle
+  const stockEditBtn = document.getElementById('stockSidebarEditBtn');
+  if (stockEditBtn) {
+    stockEditBtn.addEventListener('click', () => {
+      setStockEditMode(!isStockEditing);
+    });
+  }
+
+  // Stock sidebar search
+  const stockSidebarSearch = document.getElementById('stockSidebarSearch');
+  if (stockSidebarSearch) {
+    stockSidebarSearch.addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase();
+      document.querySelectorAll('#stockSidebarList .sidebar-item').forEach(item => {
+        const idx = parseInt(item.dataset.index);
+        const stock = STOCKS[idx];
+        const match = stock.name.toLowerCase().includes(q) || stock.code.toLowerCase().includes(q);
+        item.style.display = match ? '' : 'none';
+      });
+    });
+  }
+
+  // Stock add panel (open / close / search)
+  const stockAddPanelOverlay = document.getElementById('stockAddPanelOverlay');
+  const stockAddPanelSearch = document.getElementById('stockAddPanelSearch');
+  const stockSidebarAddBtn = document.getElementById('stockSidebarAddBtn');
+  const stockAddPanelClose = document.getElementById('stockAddPanelClose');
+
+  if (stockSidebarAddBtn) {
+    stockSidebarAddBtn.addEventListener('click', () => {
+      if (stockAddPanelOverlay) {
+        stockAddPanelOverlay.classList.add('open');
+        if (stockAddPanelSearch) { stockAddPanelSearch.value = ''; setTimeout(() => stockAddPanelSearch.focus(), 100); }
+        renderStockAddPanel('');
+      }
+    });
+  }
+  if (stockAddPanelClose) {
+    stockAddPanelClose.addEventListener('click', () => {
+      if (stockAddPanelOverlay) stockAddPanelOverlay.classList.remove('open');
+    });
+  }
+  if (stockAddPanelOverlay) {
+    stockAddPanelOverlay.addEventListener('click', (e) => {
+      if (e.target === stockAddPanelOverlay) stockAddPanelOverlay.classList.remove('open');
+    });
+  }
+  if (stockAddPanelSearch) {
+    stockAddPanelSearch.addEventListener('input', (e) => {
+      renderStockAddPanel(e.target.value);
+    });
+  }
+
+  // Stock period selector
+  const stockPeriodSelector = document.getElementById('stockPeriodSelector');
+  if (stockPeriodSelector) {
+    stockPeriodSelector.querySelectorAll('.period-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        stockPeriodSelector.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        stockPeriod = btn.dataset.period;
+        renderStockChart();
+      });
+    });
+  }
+
+  // Auto-detect platform
+  setPlatform(detectPlatform());
+
+  // Update time
+  const now = new Date();
+  const timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0') + ':' + now.getSeconds().toString().padStart(2,'0');
+  document.getElementById('overviewTime').textContent = '更新于 ' + timeStr;
+  const stockTimeEl = document.getElementById('overviewStockTime');
+  if (stockTimeEl) stockTimeEl.textContent = '更新于 ' + timeStr;
+
+  // Render
+  renderMarketIndices();
+  renderPairGrid();
+  renderPairChips();
+  renderNotificationSubscriptions();
+  renderStockIndices('overviewStockIndices');
+  renderStockGrid('overviewStockGrid', true);
+  startCountdown();
+
+  // Handle window resize for chart
+  window.addEventListener('resize', () => {
+    if (myChart) myChart.resize();
+    if (myStockChart) myStockChart.resize();
+  });
+}
+
+// Start
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+</script>
+</body>
+</html>
