@@ -1,7 +1,7 @@
 {
   "name": "finance-viewer",
   "productName": "外汇查看器",
-  "version": "1.0.0",
+  "version": "0.0.1-1",
   "description": "外汇汇率查看与分析工具",
   "main": ".vite/build/main.js",
   "private": true,
