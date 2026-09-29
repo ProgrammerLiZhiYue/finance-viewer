@@ -19,7 +19,7 @@ interface Job {
   defaults?: { run: { shell: string } };
   strategy?: {
     'fail-fast': boolean;
-    matrix: { include: { os: string; platform: string; arch: string; command: string }[] };
+    matrix: { include: { os: string; platform: string; arch: string }[] };
   };
   steps: Step[];
 }
@@ -47,7 +47,9 @@ const installers = [
   'finance-viewer-windows-x64/squirrel.windows/x64/finance_viewer-1.0.0-full.nupkg',
   'finance-viewer-windows-x64/squirrel.windows/x64/RELEASES',
   'finance-viewer-macos-x64/zip/darwin/x64/finance-viewer-darwin-x64-1.0.0.zip',
+  'finance-viewer-macos-x64/finance-viewer-1.0.0-x64.dmg',
   'finance-viewer-macos-arm64/zip/darwin/arm64/finance-viewer-darwin-arm64-1.0.0.zip',
+  'finance-viewer-macos-arm64/finance-viewer-1.0.0-arm64.dmg',
   'finance-viewer-linux-x64/deb/x64/finance-viewer_1.0.0_amd64.deb',
   'finance-viewer-linux-x64/rpm/x64/finance-viewer-1.0.0.x86_64.rpm',
 ];
@@ -66,6 +68,9 @@ function publication(files = installers, version = '1.0.0') {
   const repos = {
     getReleaseByTag: vi.fn().mockRejectedValue({ status: 404 }),
     listReleases: vi.fn(),
+    compareCommitsWithBasehead: vi.fn().mockResolvedValue({
+      data: { commits: [], html_url: 'https://github.com/owner/finance-viewer/compare/v0.9.0...v1.0.0' },
+    }),
     createRelease: vi.fn().mockResolvedValue({ data: { id: 10, draft: true } }),
     updateRelease: vi.fn().mockResolvedValue({ data: { id: 10, draft: false } }),
   };
@@ -117,13 +122,16 @@ describe('release workflow configuration', () => {
     expect(build.strategy).toEqual({
       'fail-fast': false,
       matrix: { include: [
-        { os: 'windows-latest', platform: 'windows', arch: 'x64', command: 'make:win' },
-        { os: 'macos-15-intel', platform: 'macos', arch: 'x64', command: 'make:mac' },
-        { os: 'macos-15', platform: 'macos', arch: 'arm64', command: 'make:mac' },
-        { os: 'ubuntu-24.04', platform: 'linux', arch: 'x64', command: 'make:linux' },
+        { os: 'windows-latest', platform: 'windows', arch: 'x64' },
+        { os: 'macos-15-intel', platform: 'macos', arch: 'x64' },
+        { os: 'macos-15', platform: 'macos', arch: 'arm64' },
+        { os: 'ubuntu-24.04', platform: 'linux', arch: 'x64' },
       ] },
     });
-    expect(step(build, 'Build installers').run).toContain('pnpm run "$BUILD_COMMAND" --arch "$BUILD_ARCH"');
+    expect(step(build, 'Build installers').run).toBe('pnpm exec electron-forge make --arch "$BUILD_ARCH"');
+    expect(JSON.stringify(build)).not.toMatch(/make:(win|mac|linux)/);
+    expect(readFileSync('forge.config.ts', 'utf8')).toMatch(/new MakerZIP\(\{\}, \['darwin'\]\)/);
+    expect(readFileSync('forge.config.ts', 'utf8')).toMatch(/new MakerDMG\(\{\}, \['darwin'\]\)/);
     expect(build.defaults!.run.shell).toBe('bash');
   });
 
@@ -156,7 +164,7 @@ describe('release workflow configuration', () => {
     expect(upload.name).toBe('finance-viewer-${{ matrix.platform }}-${{ matrix.arch }}');
     expect(upload['if-no-files-found']).toBe('error');
     expect(upload.overwrite).toBe(true);
-    for (const glob of ['*.exe', '*.msi', '*.nupkg', 'RELEASES', '*.zip', '*.deb', '*.rpm']) {
+    for (const glob of ['*.exe', '*.msi', '*.nupkg', 'RELEASES', '*.zip', '*.dmg', '*.deb', '*.rpm']) {
       expect(upload.path).toContain(glob);
     }
     expect(step(release, 'Download all installers').with).toEqual({
@@ -187,15 +195,63 @@ describe('release publication', () => {
     await test.run();
     expect(test.repos.createRelease).toHaveBeenCalledWith(expect.objectContaining({
       tag_name: 'v1.0.0', target_commitish: 'built-commit', draft: true, prerelease: false,
-      generate_release_notes: true,
+      body: expect.stringContaining('## 安装包'),
     }));
+    expect(test.repos.createRelease.mock.calls[0][0]).not.toHaveProperty('generate_release_notes');
     expect(test.upload).toHaveBeenCalledWith('gh', [
       'release', 'upload', 'v1.0.0', ...test.paths, '--clobber',
     ], { stdio: 'inherit' });
     expect(test.repos.updateRelease).toHaveBeenCalledWith(expect.objectContaining({
-      release_id: 10, draft: false, prerelease: false,
+      release_id: 10, draft: false, prerelease: false, body: expect.stringContaining('## 安装包'),
     }));
     expect(test.upload.mock.invocationCallOrder[0]).toBeLessThan(test.repos.updateRelease.mock.invocationCallOrder[0]);
+  });
+
+  it('writes custom release notes with a changelog since the previous release', async () => {
+    const test = publication();
+    test.pages.push([{ id: 5, draft: false, tag_name: 'v0.9.0' }]);
+    test.repos.compareCommitsWithBasehead.mockResolvedValue({ data: {
+      html_url: 'https://github.com/owner/finance-viewer/compare/v0.9.0...v1.0.0',
+      commits: [
+        { sha: 'aaaaaaa1111', html_url: 'https://github.com/owner/finance-viewer/commit/aaaaaaa1111', commit: { message: 'feat: add DMG packager\n\ndetails' } },
+        { sha: 'bbbbbbb2222', html_url: 'https://github.com/owner/finance-viewer/commit/bbbbbbb2222', commit: { message: 'fix(chart): handle empty data' } },
+        { sha: 'ccccccc3333', html_url: 'https://github.com/owner/finance-viewer/commit/ccccccc3333', commit: { message: 'chore: bump deps' } },
+        { sha: 'ddddddd4444', html_url: 'https://github.com/owner/finance-viewer/commit/ddddddd4444', commit: { message: 'Merge pull request #7 from owner/branch' } },
+      ],
+    } });
+    await test.run();
+    expect(test.repos.compareCommitsWithBasehead).toHaveBeenCalledWith(
+      expect.objectContaining({ basehead: 'v0.9.0...v1.0.0' }));
+    const body = String(test.repos.createRelease.mock.calls[0][0].body);
+    expect(body).toContain('## 更新内容');
+    expect(body).toContain('### 新功能\n- add DMG packager ([aaaaaaa](https://github.com/owner/finance-viewer/commit/aaaaaaa1111))');
+    expect(body).toContain('### 问题修复\n- handle empty data ([bbbbbbb](https://github.com/owner/finance-viewer/commit/bbbbbbb2222))');
+    expect(body).toContain('### 其他变更\n- bump deps');
+    expect(body).not.toContain('Merge pull request');
+    expect(body).toContain('**完整变更对比**: https://github.com/owner/finance-viewer/compare/v0.9.0...v1.0.0');
+    expect(body).toContain('## 安装包');
+    expect(body).toContain('- **Windows x64**: `外汇查看器 Setup.exe`, `finance_viewer-1.0.0-full.nupkg`, `RELEASES`');
+    expect(body).toContain('- **macOS x64 (Intel)**: `finance-viewer-darwin-x64-1.0.0.zip`, `finance-viewer-1.0.0-x64.dmg`');
+    expect(body).toContain('- **macOS arm64 (Apple Silicon)**: `finance-viewer-darwin-arm64-1.0.0.zip`, `finance-viewer-1.0.0-arm64.dmg`');
+    expect(body).toContain('- **Linux x64**: `finance-viewer_1.0.0_amd64.deb`, `finance-viewer-1.0.0.x86_64.rpm`');
+  });
+
+  it('falls back to a first release note without a changelog', async () => {
+    const test = publication();
+    await test.run();
+    expect(test.repos.compareCommitsWithBasehead).not.toHaveBeenCalled();
+    const body = String(test.repos.createRelease.mock.calls[0][0].body);
+    expect(body).toContain('## 更新内容\n首个版本发布。');
+    expect(body).not.toContain('完整变更对比');
+  });
+
+  it('notes an empty changelog when the previous release shares the commit range', async () => {
+    const test = publication();
+    test.pages.push([{ id: 5, draft: false, tag_name: 'v0.9.0' }]);
+    await test.run();
+    const body = String(test.repos.createRelease.mock.calls[0][0].body);
+    expect(body).toContain('本次发布无新增提交。');
+    expect(body).toContain('**完整变更对比**:');
   });
 
   it('supports annotated tags and prerelease versions', async () => {

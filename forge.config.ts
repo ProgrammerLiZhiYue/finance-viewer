@@ -1,6 +1,7 @@
 import type { ForgeConfig } from '@electron-forge/shared-types';
 import { MakerSquirrel } from '@electron-forge/maker-squirrel';
 import { MakerZIP } from '@electron-forge/maker-zip';
+import { MakerDMG } from '@electron-forge/maker-dmg';
 import { MakerDeb } from '@electron-forge/maker-deb';
 import { MakerRpm } from '@electron-forge/maker-rpm';
 import { VitePlugin } from '@electron-forge/plugin-vite';
@@ -10,6 +11,9 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
+    // Makers name artifacts after packagerConfig.name (falling back to the
+    // CJK productName), so keep an ASCII name or installers lose the prefix.
+    name: 'finance-viewer',
     executableName: 'finance-viewer',
     extraResource: ['assets/icons'],
     icon: './assets/icons/icon',
@@ -18,8 +22,11 @@ const config: ForgeConfig = {
   makers: [
     new MakerSquirrel({
       setupIcon: './assets/icons/icon.ico',
+      // Keep the Chinese display title in the installer metadata.
+      title: '外汇查看器',
     }),
     new MakerZIP({}, ['darwin']),
+    new MakerDMG({}, ['darwin']),
     new MakerRpm({}),
     new MakerDeb({
       options: { icon: './assets/icons/icon-256.png' },

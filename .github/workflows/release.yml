@@ -25,19 +25,15 @@ jobs:
           - os: windows-latest
             platform: windows
             arch: x64
-            command: make:win
           - os: macos-15-intel
             platform: macos
             arch: x64
-            command: make:mac
           - os: macos-15
             platform: macos
             arch: arm64
-            command: make:mac
           - os: ubuntu-24.04
             platform: linux
             arch: x64
-            command: make:linux
     defaults:
       run:
         shell: bash
@@ -105,9 +101,8 @@ jobs:
 
       - name: Build installers
         env:
-          BUILD_COMMAND: ${{ matrix.command }}
           BUILD_ARCH: ${{ matrix.arch }}
-        run: pnpm run "$BUILD_COMMAND" --arch "$BUILD_ARCH"
+        run: pnpm exec electron-forge make --arch "$BUILD_ARCH"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -119,6 +114,7 @@ jobs:
             out/make/**/*.nupkg
             out/make/**/RELEASES
             out/make/**/*.zip
+            out/make/**/*.dmg
             out/make/**/*.deb
             out/make/**/*.rpm
           if-no-files-found: error
@@ -186,45 +182,104 @@ jobs:
               ['windows-x64', /\.nupkg$/],
               ['windows-x64', /^RELEASES$/],
               ['macos-x64', /\.zip$/],
+              ['macos-x64', /\.dmg$/],
               ['macos-arm64', /\.zip$/],
+              ['macos-arm64', /\.dmg$/],
               ['linux-x64', /\.deb$/],
               ['linux-x64', /\.rpm$/],
             ];
+            const installers = new Map();
             for (const [platform, extension] of required) {
               const directory = path.join('release-artifacts', `finance-viewer-${platform}`) + path.sep;
-              if (!files.some(file => file.startsWith(directory) && extension.test(path.basename(file)))) {
-                throw new Error(`Missing installer for ${platform}: ${extension}`);
-              }
+              const matched = files.filter(file => file.startsWith(directory) && extension.test(path.basename(file)));
+              if (matched.length === 0) throw new Error(`Missing installer for ${platform}: ${extension}`);
+              installers.set(platform, [...(installers.get(platform) || []), ...matched.map(file => path.basename(file))]);
             }
 
-            const prerelease = version.includes('-');
             let release;
             try {
               ({ data: release } = await github.rest.repos.getReleaseByTag({ ...repo, tag }));
             } catch (error) {
               if (error.status !== 404) throw error;
-              // The tag endpoint excludes drafts left behind by an interrupted upload.
-              for await (const page of github.paginate.iterator(github.rest.repos.listReleases, { ...repo, per_page: 100 })) {
-                release = page.data.find(item => item.draft && item.tag_name === tag);
-                if (release) break;
+            }
+            if (release && release.immutable) throw new Error('Release is immutable; publish a new version instead');
+
+            let previousTag = null;
+            for await (const page of github.paginate.iterator(github.rest.repos.listReleases, { ...repo, per_page: 100 })) {
+              if (!previousTag) {
+                // The last published release anchors the changelog.
+                const previous = page.data.find(item => !item.draft && item.tag_name !== tag);
+                if (previous) previousTag = previous.tag_name;
               }
               if (!release) {
-                ({ data: release } = await github.rest.repos.createRelease({
-                  ...repo,
-                  tag_name: tag,
-                  target_commitish: context.sha,
-                  name: tag,
-                  draft: true,
-                  prerelease,
-                  generate_release_notes: true,
-                }));
+                // The tag endpoint excludes drafts left behind by an interrupted upload.
+                release = page.data.find(item => item.draft && item.tag_name === tag) ?? null;
               }
+              if (previousTag && release) break;
             }
-            if (release.immutable) throw new Error('Release is immutable; publish a new version instead');
+
+            const groups = new Map([
+              ['feat', '新功能'],
+              ['fix', '问题修复'],
+              ['perf', '性能优化'],
+              ['refactor', '重构'],
+              ['docs', '文档'],
+              ['test', '测试'],
+            ]);
+            const platformLabels = {
+              'windows-x64': 'Windows x64',
+              'macos-x64': 'macOS x64 (Intel)',
+              'macos-arm64': 'macOS arm64 (Apple Silicon)',
+              'linux-x64': 'Linux x64',
+            };
+            const sections = [];
+            if (previousTag) {
+              const { data: comparison } = await github.rest.repos.compareCommitsWithBasehead({
+                ...repo,
+                basehead: `${previousTag}...${tag}`,
+              });
+              const entries = new Map();
+              for (const commit of comparison.commits) {
+                const subject = commit.commit.message.split('\n')[0].trim();
+                if (subject.startsWith('Merge ')) continue;
+                const parsed = subject.match(/^([a-z]+)(\([^)]*\))?!?:\s*(.+)$/i);
+                const title = groups.get(parsed ? parsed[1].toLowerCase() : '') || '其他变更';
+                const text = parsed ? parsed[3] : subject;
+                entries.set(title, [...(entries.get(title) || []), `- ${text} ([${commit.sha.slice(0, 7)}](${commit.html_url}))`]);
+              }
+              sections.push('## 更新内容');
+              for (const title of [...groups.values(), '其他变更']) {
+                const items = entries.get(title);
+                if (items) sections.push(`### ${title}\n${items.join('\n')}`);
+              }
+              if (entries.size === 0) sections.push('本次发布无新增提交。');
+              sections.push(`**完整变更对比**: ${comparison.html_url}`);
+            } else {
+              sections.push('## 更新内容\n首个版本发布。');
+            }
+            sections.push('## 安装包');
+            for (const [platform, artifacts] of installers) {
+              sections.push(`- **${platformLabels[platform] || platform}**: ${artifacts.map(name => `\`${name}\``).join(', ')}`);
+            }
+            const body = sections.join('\n\n');
+
+            const prerelease = version.includes('-');
+            if (!release) {
+              ({ data: release } = await github.rest.repos.createRelease({
+                ...repo,
+                tag_name: tag,
+                target_commitish: context.sha,
+                name: tag,
+                body,
+                draft: true,
+                prerelease,
+              }));
+            }
             execFileSync('gh', ['release', 'upload', tag, ...files, '--clobber'], { stdio: 'inherit' });
             await github.rest.repos.updateRelease({
               ...repo,
               release_id: release.id,
+              body,
               draft: false,
               prerelease,
             });
