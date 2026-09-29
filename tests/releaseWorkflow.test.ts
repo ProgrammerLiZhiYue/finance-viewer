@@ -151,6 +151,21 @@ describe('release workflow configuration', () => {
     expect(names.indexOf('Check code')).toBeLessThan(names.indexOf('Build installers'));
   });
 
+  it('explicitly allows native packaging dependency builds without disabling build-script checks', () => {
+    const workspace = yaml.load(readFileSync('pnpm-workspace.yaml', 'utf8')) as {
+      allowBuilds: Record<string, boolean>;
+      strictDepBuilds?: boolean;
+    };
+    expect(workspace.allowBuilds).toEqual({
+      electron: true,
+      'electron-winstaller': true,
+      'fs-xattr': true,
+      'macos-alias': true,
+      'unrs-resolver': true,
+    });
+    expect(workspace.strictDepBuilds).not.toBe(false);
+  });
+
   it('supplies Linux packaging tools and generates the macOS icon', () => {
     expect(step(build, 'Install Linux packaging tools').if).toBe("runner.os == 'Linux'");
     expect(step(build, 'Install Linux packaging tools').run).toContain('fakeroot rpm');
