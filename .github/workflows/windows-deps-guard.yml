@@ -1,0 +1,46 @@
+name: Windows deps guard
+
+# forge.config.ts imports every maker statically, so a dependency change that
+# breaks the win32 install layout only shows up in the Windows release job.
+# This installs the repo the way a Windows host would and requires every maker.
+on:
+  pull_request:
+    paths:
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'forge.config.ts'
+      - 'scripts/check-windows-makers.mjs'
+      - '.github/workflows/windows-deps-guard.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-deps-guard-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  makers:
+    name: Load every Forge maker for win32
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Check win32 maker resolution
+        run: node scripts/check-windows-makers.mjs .

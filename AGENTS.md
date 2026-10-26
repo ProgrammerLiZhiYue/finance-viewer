@@ -29,6 +29,7 @@ Unit tests live in `tests/` (sibling of `src/`, never colocated in `src/`), orga
 - Package manager is **pnpm** with `nodeLinker: hoisted` (see `pnpm-workspace.yaml`).
 - Electron 42+ 不再提供 `postinstall` 来下载二进制：`node_modules/electron` 里没有 `scripts` 字段，二进制由 `require('electron')` 惰性下载（第一次 `pnpm start` / `electron-forge start` 时）或显式执行 `npx install-electron` 安装，装好后写下 `node_modules/electron/path.txt`。因此本项目没有 `postinstall` 钩子，也不需要手写解压脚本。若首次下载失败（GitHub 被墙），把 zip 预先放进 `@electron/get` 缓存，或设置 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 后再启动。
 - `pnpm-workspace.yaml` overrides `@electron/node-gyp` with the local tarball `vendor/electron-node-gyp.tar.gz` because this network cannot git-fetch it. Never delete `vendor/` or the override — installs break without them.
+- `glob` is pinned in `devDependencies` on purpose. `forge.config.ts` statically imports every maker, and `@electron-forge/maker-squirrel` loads `electron-winstaller` → `@electron/asar@3` → `glob@7`. Under pnpm's `hoisted` layout the **win32** resolution drops `glob@7` (linux keeps it), so `electron-forge make` only fails on Windows with `Cannot find module 'glob'`. Keep the 7.x pin; `scripts/check-windows-makers.mjs` (run by `.github/workflows/windows-deps-guard.yml` on dependency changes) installs with `--os=win32 --cpu=x64` and requires every maker to catch regressions early.
 
 ## Architecture
 

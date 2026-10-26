@@ -1,4 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 // Electron Forge 8 的 plugin-vite 把主进程与 preload 产物输出为 `.cjs`
@@ -7,9 +9,11 @@ import { describe, expect, it } from 'vitest';
 const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as {
   main: string;
   scripts: Record<string, string>;
+  devDependencies: Record<string, string>;
 };
 const mainSource = readFileSync('src/main.ts', 'utf8');
 const forgeConfig = readFileSync('forge.config.ts', 'utf8');
+const requireFromProject = createRequire(import.meta.url);
 
 describe('Electron Forge 构建入口配置', () => {
   it('package.json 的 main 指向 plugin-vite 生成的 CommonJS 主进程包', () => {
@@ -47,5 +51,29 @@ describe('npm scripts', () => {
     for (const { name, file } of referenced) {
       expect(existsSync(file), `scripts.${name} 引用了不存在的文件 ${file}`).toBe(true);
     }
+  });
+});
+
+// forge.config.ts 会静态 import 每个 maker，所以 Windows 打包前必须先能加载
+// electron-winstaller -> @electron/asar@3 -> glob@7。pnpm 的 hoisted 布局在
+// win32 解析下会丢掉 glob@7（linux 不会），打包时才报 Cannot find module 'glob'，
+// 因此 glob 被显式钉在 devDependencies 里。
+describe('Windows 打包依赖布局', () => {
+  it('glob 被钉在 7.x（@electron/asar@3 需要的 API）', () => {
+    expect(pkg.devDependencies.glob).toMatch(/^\^7\./);
+  });
+
+  it('electron-winstaller 内嵌的 @electron/asar 能解析到 glob@7', () => {
+    const winstallerDir = path.dirname(requireFromProject.resolve('electron-winstaller/package.json'));
+    const asarLibDir = path.join(winstallerDir, 'node_modules', '@electron', 'asar', 'lib');
+    const globEntry = requireFromProject.resolve('glob', { paths: [asarLibDir] });
+    const globPkg = JSON.parse(
+      readFileSync(path.join(path.dirname(globEntry), 'package.json'), 'utf8'),
+    ) as { version: string };
+    expect(globPkg.version).toMatch(/^7\./);
+  });
+
+  it('electron-winstaller 可以正常加载', () => {
+    expect(() => requireFromProject('electron-winstaller')).not.toThrow();
   });
 });
