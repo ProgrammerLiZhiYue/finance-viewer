@@ -256,7 +256,7 @@ const createWindow = () => {
     frame: false,
     icon: getIconPath(process.platform === 'win32' ? 'icon.ico' : 'icon-256.png'),
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.cjs'),
     },
   });
 

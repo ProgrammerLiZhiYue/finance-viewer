@@ -27,15 +27,15 @@ Unit tests live in `tests/` (sibling of `src/`, never colocated in `src/`), orga
 ## Setup / Gotchas
 
 - Package manager is **pnpm** with `nodeLinker: hoisted` (see `pnpm-workspace.yaml`).
-- `postinstall` runs `fix-electron.js`, which patches `extract-zip` for Node.js v22+ compatibility and manually extracts the electron binary from cache if `path.txt` is missing. If `pnpm install` succeeds but `pnpm start` fails with a missing electron binary, re-run `node fix-electron.js`.
+- Electron 42+ 不再提供 `postinstall` 来下载二进制：`node_modules/electron` 里没有 `scripts` 字段，二进制由 `require('electron')` 惰性下载（第一次 `pnpm start` / `electron-forge start` 时）或显式执行 `npx install-electron` 安装，装好后写下 `node_modules/electron/path.txt`。因此本项目没有 `postinstall` 钩子，也不需要手写解压脚本。若首次下载失败（GitHub 被墙），把 zip 预先放进 `@electron/get` 缓存，或设置 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 后再启动。
 - `pnpm-workspace.yaml` overrides `@electron/node-gyp` with the local tarball `vendor/electron-node-gyp.tar.gz` because this network cannot git-fetch it. Never delete `vendor/` or the override — installs break without them.
 
 ## Architecture
 
 Three separate Vite build targets (configured in `forge.config.ts`):
-- **main** (`src/main.ts`) — Electron main process, built with `vite.main.config.ts`
-- **preload** (`src/preload.ts`) — preload script, built with `vite.preload.config.ts`
-- **renderer** (`src/renderer.tsx`) — React UI, built with `vite.renderer.config.ts` (only config with the React plugin)
+- **main** (`src/main.ts`) — Electron main process, built with `vite.main.config.mts`
+- **preload** (`src/preload.ts`) — preload script, built with `vite.preload.config.mts`
+- **renderer** (`src/renderer.tsx`) — React UI, built with `vite.renderer.config.mts` (only config with the React plugin)
 
 The renderer accesses Electron globals `MAIN_WINDOW_VITE_DEV_SERVER_URL` and `MAIN_WINDOW_VITE_NAME` — declared globally in `src/env.d.ts` (along with `__APP_VERSION__` and `window.electronAPI`).
 
@@ -48,7 +48,7 @@ The preload exposes `window.electronAPI` via `contextBridge.exposeInMainWorld`. 
 - React function components with hooks; settings state lives in `src/context/SettingsContext.tsx` (Context + useReducer, persisted to localStorage); i18n via react-i18next (`src/i18n.ts`, locale files use single-brace `{key}` interpolation).
 - `noImplicitAny: true` is enforced in tsconfig
 - ESLint uses flat config (`eslint.config.mjs`) with `typescript-eslint` + `eslint-plugin-import-x` (electron ruleset). Lint covers `.ts`/`.tsx`/`.mjs`.
-- `require()` in `src/main.ts` and `fix-electron.js` is intentional (ESLint rule `@typescript-eslint/no-require-imports` is disabled for those files).
+- `require()` in `src/main.ts` is intentional (ESLint rule `@typescript-eslint/no-require-imports` is disabled for that file).
 - No formatter (no prettier/biome). ESLint is the only style gate — do not add a formatter or reformat files.
 
 ## Data / Services

@@ -40,7 +40,7 @@ export default tseslint.config(
   },
   // Electron main 进程中 require() 是有意为之
   {
-    files: ["src/main.ts", "fix-electron.js"],
+    files: ["src/main.ts"],
     rules: {
       "@typescript-eslint/no-require-imports": "off",
     },
