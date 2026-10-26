@@ -3920,13 +3920,7 @@ function renderStockChart() {
     series: [{
       type: 'line', data: prices, smooth: true, showSymbol: false,
       lineStyle: { color: accentColor, width: 2 },
-      areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:accentColor+'26'},{offset:1,color:accentColor+'03'}]) },
-      markLine: {
-        silent: true, symbol: 'none',
-        lineStyle: { color: labelColor, type: 'dashed', width: 1 },
-        label: { color: labelColor, fontSize: 10, formatter: p => '前收 ' + p.value.toFixed(2) },
-        data: [{ yAxis: s.prevClose }]
-      }
+      areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:accentColor+'26'},{offset:1,color:accentColor+'03'}]) }
     }],
     animation: true, animationDuration: 800
   });

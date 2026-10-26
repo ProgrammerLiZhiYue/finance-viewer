@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Mock } from 'vitest';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
+import * as echarts from 'echarts';
+import type { EChartsOption } from 'echarts';
 import StockViewer from '../../src/components/StockViewer';
 import i18n from '../../src/i18n';
 import type { HKStockCode, Period } from '../../src/types';
@@ -124,5 +127,26 @@ describe('StockViewer', () => {
     expect(fiveDay.className).toContain('active');
     await waitFor(() =>
       expect(container.querySelector('.sidebar-item.active .sidebar-item-rate')?.textContent).toBe('11.35'));
+  });
+
+  it('renders the line series without a prev-close markLine', async () => {
+    const api = installElectronAPI();
+    api.getHKStockMinute.mockImplementation((code: HKStockCode) =>
+      Promise.resolve(makeStock({ code, name: NAMES[code] ?? code })));
+
+    renderWithProviders(<StockViewer isDark={false} initialStock="00700" />);
+
+    await waitFor(() =>
+      expect(echarts.init as unknown as Mock).toHaveBeenCalled());
+
+    const initResult = (echarts.init as unknown as Mock).mock.results[0].value as { setOption: Mock };
+    const setOption = initResult.setOption;
+    await waitFor(() =>
+      expect(setOption.mock.calls.some(args => (args[0] as EChartsOption).series !== undefined)).toBe(true));
+
+    const markLines = setOption.mock.calls
+      .flatMap(args => ((args[0] as EChartsOption).series ?? []) as { markLine?: unknown }[])
+      .filter(series => series.markLine !== undefined);
+    expect(markLines).toEqual([]);
   });
 });

@@ -58,9 +58,22 @@ if (fs.existsSync(pathTxt)) {
   process.exit(0);
 }
 
-// Find the cached electron zip
-const cacheDir = path.join(process.env.LOCALAPPDATA || path.join(require('os').homedir(), '.cache'), 'electron', 'Cache');
-if (!fs.existsSync(cacheDir)) {
+// Find the cached electron zip. @electron/get v3 (env-paths, suffix '') cache roots:
+//   win32: %LOCALAPPDATA%/electron/Cache    darwin: ~/Library/Caches/electron
+//   linux: $XDG_CACHE_HOME/electron (default ~/.cache/electron), zips under <sha256(url)>/ subdirs
+const homeDir = require('os').homedir();
+const cacheRoots = [];
+if (process.env.electron_config_cache) cacheRoots.push(process.env.electron_config_cache);
+if (process.platform === 'win32' && process.env.LOCALAPPDATA) {
+  cacheRoots.push(path.join(process.env.LOCALAPPDATA, 'electron', 'Cache'));
+} else if (process.platform === 'darwin') {
+  cacheRoots.push(path.join(homeDir, 'Library', 'Caches', 'electron'));
+} else {
+  const xdgCache = process.env.XDG_CACHE_HOME || path.join(homeDir, '.cache');
+  cacheRoots.push(path.join(xdgCache, 'electron'), path.join(xdgCache, 'electron', 'Cache'));
+}
+const cacheDirs = cacheRoots.filter((dir) => fs.existsSync(dir));
+if (cacheDirs.length === 0) {
   console.log('[fix-electron] No electron cache found, skipping.');
   process.exit(0);
 }
@@ -85,7 +98,7 @@ function findZip(dir) {
   return null;
 }
 
-const zipFile = findZip(cacheDir);
+const zipFile = cacheDirs.map((dir) => findZip(dir)).find(Boolean);
 if (!zipFile) {
   console.log(`[fix-electron] ${zipName} not found in cache, skipping.`);
   process.exit(0);

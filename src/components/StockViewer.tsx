@@ -263,12 +263,6 @@ export default function StockViewer({ isDark, initialStock }: { isDark: boolean;
             { offset: 1, color: tc.accent + '03' },
           ]),
         },
-        markLine: {
-          silent: true,
-          symbol: 'none',
-          lineStyle: { color: tc.markline, type: 'dashed', width: 1 },
-          data: [{ yAxis: prevClose, label: { formatter: i18n.t('viewer.chart.prevClose') + ' ' + prevClose.toFixed(2), color: tc.muted, fontSize: 10 } }],
-        },
       }],
     };
 
