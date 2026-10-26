@@ -3,15 +3,21 @@ name: Windows deps guard
 # forge.config.ts imports every maker statically, so a dependency change that
 # breaks the win32 install layout only shows up in the Windows release job.
 # This installs the repo the way a Windows host would and requires every maker.
+# 直接推 master 是本仓库的常态，因此 push 与 pull_request 都要监听，
+# 否则守卫只在 PR 流程里生效、等于没跑。
 on:
-  pull_request:
-    paths:
+  push:
+    branches:
+      - master
+    paths: &guard-paths
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
       - 'forge.config.ts'
       - 'scripts/check-windows-makers.mjs'
       - '.github/workflows/windows-deps-guard.yml'
+  pull_request:
+    paths: *guard-paths
   workflow_dispatch:
 
 permissions:

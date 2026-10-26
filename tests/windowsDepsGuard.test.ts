@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 // forge.config.ts 静态 import 所有 maker，因此依赖布局一旦在 win32 下变化，
 // 只有 Windows 的发布任务才会在 "Loading configuration" 阶段失败。这个
 // workflow 用 `pnpm install --os=win32 --cpu=x64` 在 Linux runner 上模拟，
-// 所以能提前在 PR 阶段发现问题。
+// 所以能提前发现问题。注意本仓库直接推 master，push 触发必须与 PR 同时保留。
 interface GuardStep {
   uses?: string;
   run?: string;
@@ -18,21 +18,26 @@ const yaml = requireFromEslint('js-yaml') as { load: (source: string) => unknown
 const workflow = yaml.load(
   readFileSync('.github/workflows/windows-deps-guard.yml', 'utf8'),
 ) as {
-  on: { pull_request: { paths: string[] }; workflow_dispatch: null };
+  on: {
+    push: { branches: string[]; paths: string[] };
+    pull_request: { paths: string[] };
+    workflow_dispatch: null;
+  };
   jobs: { makers: { 'runs-on': string; steps: GuardStep[] } };
 };
 
 describe('Windows 依赖布局守卫 workflow', () => {
-  it('在依赖或 forge 配置变更时触发', () => {
-    expect(workflow.on.pull_request.paths).toEqual(
-      expect.arrayContaining([
-        'package.json',
-        'pnpm-lock.yaml',
-        'pnpm-workspace.yaml',
-        'forge.config.ts',
-        'scripts/check-windows-makers.mjs',
-      ]),
-    );
+  it('在依赖或 forge 配置变更时触发（push 到 master 与 PR 都算）', () => {
+    const paths = [
+      'package.json',
+      'pnpm-lock.yaml',
+      'pnpm-workspace.yaml',
+      'forge.config.ts',
+      'scripts/check-windows-makers.mjs',
+    ];
+    expect(workflow.on.pull_request.paths).toEqual(expect.arrayContaining(paths));
+    expect(workflow.on.push.branches).toContain('master');
+    expect(workflow.on.push.paths).toEqual(expect.arrayContaining(paths));
   });
 
   it('在非 Windows runner 上执行 win32 模拟检查', () => {
