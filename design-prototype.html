@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="canvas:aspect-ratio" content="16:10">
-<meta name="distribution" content="v* 标签发布至 GitHub Release；Windows x64 EXE、macOS x64/arm64 ZIP/DMG、Linux x64 DEB/RPM；macOS 打包允许 fs-xattr 与 macos-alias 构建脚本；上传失败保留草稿，重跑续传；应用界面与交互不变">
+<meta name="distribution" content="v* 标签发布至 GitHub Release；Windows x64 EXE、macOS x64/arm64 ZIP/DMG、Linux x64 DEB/RPM；macOS 打包允许 fs-xattr 与 macos-alias 构建脚本；上传失败保留草稿，重跑续传；Windows 安装包图标必须是由 scripts/generate-app-icon.mjs 生成的 BMP 帧 .ico（Squirrel 进度窗口用 WPF 解码 setupIcon.ico，PNG 帧会导致 Update.exe 崩溃并误报 “Installation has failed”）；应用界面与交互不变">
 <title>外汇查看器</title>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 <style>

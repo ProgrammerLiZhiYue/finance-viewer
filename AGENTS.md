@@ -20,6 +20,7 @@ pnpm start          # dev: launches Electron via electron-forge start
 pnpm run make       # build distributable (Squirrel/ZIP/RPM/Deb)
 pnpm run lint       # eslint . (flat config — eslint.config.mjs)
 pnpm test           # vitest run (happy-dom environment)
+pnpm run gen:icon   # regenerate assets/icons/icon.ico from assets/icons/icon.png
 ```
 
 Unit tests live in `tests/` (sibling of `src/`, never colocated in `src/`), organized to mirror `src/`: component tests in `tests/components/`, logic tests in `tests/lib/` and `tests/context/`, shared mocks/fixtures in `tests/helpers.tsx`. They cover pure logic (format helpers, settings reducer/persistence, i18n interpolation) and all four components via @testing-library/react with a mocked `window.electronAPI` and mocked `echarts`; real API/ECharts rendering still needs manual verification by running the app.
@@ -29,6 +30,7 @@ Unit tests live in `tests/` (sibling of `src/`, never colocated in `src/`), orga
 - Package manager is **pnpm** with `nodeLinker: hoisted` (see `pnpm-workspace.yaml`).
 - Electron 42+ 不再提供 `postinstall` 来下载二进制：`node_modules/electron` 里没有 `scripts` 字段，二进制由 `require('electron')` 惰性下载（第一次 `pnpm start` / `electron-forge start` 时）或显式执行 `npx install-electron` 安装，装好后写下 `node_modules/electron/path.txt`。因此本项目没有 `postinstall` 钩子，也不需要手写解压脚本。若首次下载失败（GitHub 被墙），把 zip 预先放进 `@electron/get` 缓存，或设置 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 后再启动。
 - `pnpm-workspace.yaml` overrides `@electron/node-gyp` with the local tarball `vendor/electron-node-gyp.tar.gz` because this network cannot git-fetch it. Never delete `vendor/` or the override — installs break without them.
+- **`assets/icons/icon.ico` must contain BMP (DIB) frames, never PNG-compressed frames.** Squirrel.Windows' installer progress window loads that file with WPF (`AnimatedGifWindow` → `BitmapFrame.Create(setupIcon.ico)`), and WIC/WPF cannot decode PNG-in-ICO: it throws `System.IO.FileFormatException` on a background thread, `Update.exe` dies with `0xE0434352`, and `Setup.exe` then shows **"Installation has failed"** — while the app may actually be installed (or left half-written, since the crash can land mid-install). Only the non-silent (double-click) path is affected, so `Setup.exe --silent` looks healthy. Regenerate with `pnpm run gen:icon` (`scripts/generate-app-icon.mjs`, box-filtered from the 1024×1024 master); do not use tools that emit PNG frames for all sizes. `tests/iconAssets.test.ts` rejects PNG frames and asserts the committed file matches the generator output.
 - `glob` is pinned in `devDependencies` on purpose. `forge.config.ts` statically imports every maker, and `@electron-forge/maker-squirrel` loads `electron-winstaller` → `@electron/asar@3` → `glob@7`. Under pnpm's `hoisted` layout the **win32** resolution drops `glob@7` (linux keeps it), so `electron-forge make` only fails on Windows with `Cannot find module 'glob'`. Keep the 7.x pin; `scripts/check-windows-makers.mjs` (run by `.github/workflows/windows-deps-guard.yml` on dependency changes) installs with `--os=win32 --cpu=x64` and requires every maker to catch regressions early.
 
 ## Architecture
